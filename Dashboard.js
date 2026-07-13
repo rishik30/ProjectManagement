@@ -179,77 +179,51 @@ function getDashboardFilters() {
 }
 
 function applyDashboardValidation(sheet) {
-	const machineSheet = getSheet(SHEETS.MACHINE_MASTER);
-	const userSheet = getSheet(SHEETS.USER_MASTER);
-	const productSheet = getSheet(SHEETS.PRODUCT_MASTER);
+	const machineNames = getMachines().map((m) => m.name);
 
-	/*
-	 * Date Range
-	 */
+	const operatorNames = getOperators().map((o) => o.name);
+
+	const productNames = getAllProducts().map((p) => p.name);
 
 	const dateRangeRule = SpreadsheetApp.newDataValidation()
 		.requireValueInList(DASHBOARD.DATE_RANGES, true)
 		.build();
 
-	/*
-	 * Machine
-	 */
-
 	const machineRule = SpreadsheetApp.newDataValidation()
-		.requireValueInRange(
-			machineSheet.getRange(
-				2,
-				MACHINE_MASTER_COLUMNS.NAME,
-				Math.max(machineSheet.getLastRow() - 1, 1),
-				1,
-			),
-			true,
-		)
+		.requireValueInList(['All', ...machineNames], true)
 		.build();
-
-	/*
-	 * Operator
-	 */
 
 	const operatorRule = SpreadsheetApp.newDataValidation()
-		.requireValueInRange(
-			userSheet.getRange(
-				2,
-				USER_MASTER_COLUMNS.NAME,
-				Math.max(userSheet.getLastRow() - 1, 1),
-				1,
-			),
-			true,
-		)
+		.requireValueInList(['All', ...operatorNames], true)
 		.build();
-
-	/*
-	 * Product
-	 */
 
 	const productRule = SpreadsheetApp.newDataValidation()
-		.requireValueInRange(
-			productSheet.getRange(
-				2,
-				PRODUCT_MASTER_COLUMNS.NAME,
-				Math.max(productSheet.getLastRow() - 1, 1),
-				1,
-			),
-			true,
-		)
+		.requireValueInList(['All', ...productNames], true)
 		.build();
 
-	/*
-	 * Apply validations
-	 */
+	const validations = [
+		['B3', dateRangeRule],
+		['B6', machineRule],
+		['B7', operatorRule],
+		['B8', productRule],
+	];
 
-	sheet.getRange('B3').setDataValidation(dateRangeRule);
+	validations.forEach(([cell, rule]) => {
+		const range = sheet.getRange(cell);
 
-	sheet.getRange('B6').setDataValidation(machineRule);
+		// Remove old validation first
+		range.clearDataValidations();
 
-	sheet.getRange('B7').setDataValidation(operatorRule);
+		// Reapply
+		range.setDataValidation(rule);
 
-	sheet.getRange('B8').setDataValidation(productRule);
+		// Preserve current value if still valid
+		const value = range.getDisplayValue();
+
+		if (!value) {
+			range.setValue('All');
+		}
+	});
 }
 
 /**
