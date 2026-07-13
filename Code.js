@@ -23,11 +23,25 @@ const SHEETS = {
 
 	MACHINE_REPORT: 'Machine_Report',
 	DASHBOARD: 'Dashboard',
-	DASHBOARD_LOOKUPS: '_Dashboard_Lookups',
 	VALIDATION: 'Validation',
 };
 
 const SIDEBAR = {
 	TITLE: APP_NAME,
 	WIDTH: 420,
+};
+
+const MACHINE_MASTER_COLUMNS = {
+	ID: 1,
+	NAME: 2,
+};
+
+const USER_MASTER_COLUMNS = {
+	ID: 1,
+	NAME: 2,
+};
+
+const PRODUCT_MASTER_COLUMNS = {
+	ID: 1,
+	NAME: 2,
 };

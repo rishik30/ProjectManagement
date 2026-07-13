@@ -65,7 +65,8 @@ function buildDataset(details, headerMap) {
 		dataset.push({
 			entryId: header.entryId,
 			timestamp: header.timestamp,
-			date: header.date,
+			productionDate: new Date(header.date),
+			productionDateOnly: normalizeDate(header.date),
 			machineId: header.machineId,
 			machineName: header.machineName,
 			operatorId: header.operatorId,
@@ -116,13 +117,13 @@ function applyFilters(dataset, filters) {
 		}
 
 		if (filters.fromDate) {
-			if (record.date < filters.fromDate) {
+			if (record.productionDateOnly < filters.fromDate) {
 				return false;
 			}
 		}
 
 		if (filters.toDate) {
-			if (record.date > filters.toDate) {
+			if (record.productionDateOnly > filters.toDate) {
 				return false;
 			}
 		}
@@ -236,4 +237,10 @@ function testKPIs() {
 			2,
 		),
 	);
+}
+
+function normalizeDate(date) {
+	const d = new Date(date);
+	d.setHours(0, 0, 0, 0);
+	return d;
 }
