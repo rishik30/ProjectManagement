@@ -1,0 +1,714 @@
+<script>
+	let machines = [];
+	let operators = [];
+	let currentProducts = [];
+	let setupMachines = [];
+	let setupProducts = [];
+	let setupConfiguration = [];
+
+	document.addEventListener('DOMContentLoaded', initializeProductionForm);
+
+	/**
+	 * -----------------------------------------------------------
+	 * Initial Load
+	 * -----------------------------------------------------------
+	 */
+	function initializeProductionForm() {
+		document.getElementById('prodDate').valueAsDate = new Date();
+
+		loadMasters();
+
+		document
+			.getElementById('machineSelect')
+			.addEventListener('change', onMachineChange);
+
+		document
+			.getElementById('resetProductionBtn')
+			.addEventListener('click', resetProductionForm);
+
+		document
+			.getElementById('submitProductionBtn')
+			.addEventListener('click', submitProductionForm);
+
+		initializeTabs();
+
+		initializeMachineSetup();
+	}
+
+	function initializeTabs() {
+		document
+			.getElementById('productionTab')
+			.addEventListener('click', showProductionTab);
+
+		document
+			.getElementById('machineTab')
+			.addEventListener('click', showMachineTab);
+
+		if (DEFAULT_TAB === 'machine') {
+			showMachineTab();
+		} else {
+			showProductionTab();
+		}
+	}
+
+	function showProductionTab() {
+		document.getElementById('productionContent').style.display = 'block';
+		document.getElementById('machineContent').style.display = 'none';
+
+		document.getElementById('productionTab').classList.add('active-tab');
+		document.getElementById('machineTab').classList.remove('active-tab');
+	}
+
+	function showMachineTab() {
+		document.getElementById('productionContent').style.display = 'none';
+		document.getElementById('machineContent').style.display = 'block';
+
+		document.getElementById('machineTab').classList.add('active-tab');
+		document.getElementById('productionTab').classList.remove('active-tab');
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Load Machines & Operators
+	 * -----------------------------------------------------------
+	 */
+	function loadMasters() {
+		google.script.run
+			.withSuccessHandler(populateMasters)
+			.getProductionFormData();
+	}
+
+	function populateMasters(data) {
+		machines = data.machines;
+		operators = data.operators;
+
+		populateMachineDropdown();
+		populateOperatorDropdown();
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Machine Dropdown
+	 * -----------------------------------------------------------
+	 */
+	function populateMachineDropdown() {
+		const dropdown = document.getElementById('machineSelect');
+
+		dropdown.innerHTML = '';
+
+		const defaultOption = document.createElement('option');
+
+		defaultOption.value = '';
+
+		defaultOption.textContent = 'Select Machine';
+
+		dropdown.appendChild(defaultOption);
+
+		machines.forEach((machine) => {
+			const option = document.createElement('option');
+
+			option.value = machine.id;
+
+			option.textContent = machine.name;
+
+			dropdown.appendChild(option);
+		});
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Operator Dropdown
+	 * -----------------------------------------------------------
+	 */
+	function populateOperatorDropdown() {
+		const dropdown = document.getElementById('operatorSelect');
+
+		dropdown.innerHTML = '';
+
+		operators.forEach((operator) => {
+			const option = document.createElement('option');
+
+			option.value = operator.id;
+
+			option.textContent = operator.name;
+
+			dropdown.appendChild(option);
+		});
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Machine Changed
+	 * -----------------------------------------------------------
+	 */
+	function onMachineChange() {
+		const machineId = this.value;
+
+		if (machineId === '') {
+			clearRunningProducts();
+
+			return;
+		}
+
+		const machine = machines.find((m) => m.id === machineId);
+
+		if (machine) {
+			document.getElementById('operatorSelect').value =
+				machine.defaultOperatorId;
+		}
+
+		google.script.run
+			.withSuccessHandler(renderRunningProducts)
+			.getMachineConfiguration(machineId);
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Running Products
+	 * -----------------------------------------------------------
+	 */
+	function renderRunningProducts(products) {
+		currentProducts = products;
+
+		const tbody = document.querySelector('#runningProductsTable tbody');
+
+		tbody.innerHTML = '';
+
+		if (products.length === 0) {
+			tbody.innerHTML = `
+            <tr>
+                <td colspan="2" class="empty">
+                    No running products
+                </td>
+            </tr>
+        `;
+
+			return;
+		}
+
+		products.forEach((product) => {
+			tbody.innerHTML += `
+            <tr>
+                <td>${product.productName}</td>
+                <td>${product.mould}</td>
+            </tr>
+        `;
+		});
+	}
+
+	function clearRunningProducts() {
+		currentProducts = [];
+
+		document.querySelector('#runningProductsTable tbody').innerHTML = `
+        <tr>
+            <td colspan="2" class="empty">
+                Select a machine
+            </td>
+        </tr>
+    `;
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Reset Form
+	 * -----------------------------------------------------------
+	 */
+	function resetProductionForm() {
+		document.getElementById('prodDate').valueAsDate = new Date();
+
+		document.getElementById('machineSelect').selectedIndex = 0;
+
+		document.getElementById('operatorSelect').selectedIndex = 0;
+
+		document.getElementById('bags').value = '';
+
+		document.getElementById('rounds').value = '';
+
+		clearRunningProducts();
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Submit
+	 * -----------------------------------------------------------
+	 */
+	function submitProductionForm() {
+		const data = buildProductionObject();
+
+		const validation = validateProduction(data);
+
+		if (validation !== true) {
+			alert(validation);
+
+			return;
+		}
+
+		showConfirmation(data);
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Validation
+	 * -----------------------------------------------------------
+	 */
+	function validateProduction(data) {
+		if (data.date === '') return 'Please select Date.';
+
+		if (data.machineId === '') return 'Please select Machine.';
+
+		if (data.operatorId === '') return 'Please select Operator.';
+
+		if (data.bags === '' || isNaN(data.bags)) return 'Please enter Bags.';
+
+		if (data.rounds === '' || isNaN(data.rounds)) return 'Please enter Rounds.';
+
+		if (data.products.length === 0)
+			return 'Selected machine has no running products.';
+
+		return true;
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Build JSON
+	 * -----------------------------------------------------------
+	 */
+	function buildProductionObject() {
+		const machineId = document.getElementById('machineSelect').value;
+
+		const machine = machines.find((m) => m.id === machineId);
+
+		const operatorId = document.getElementById('operatorSelect').value;
+
+		const operator = operators.find((o) => o.id === operatorId);
+
+		return {
+			date: document.getElementById('prodDate').value,
+
+			machineId: machine.id,
+
+			machineName: machine.name,
+
+			operatorId: operator.id,
+
+			operatorName: operator.name,
+
+			bags: Number(document.getElementById('bags').value),
+
+			rounds: Number(document.getElementById('rounds').value),
+
+			products: currentProducts,
+		};
+	}
+
+	/**
+	 * -----------------------------------------------------------
+	 * Confirmation
+	 * -----------------------------------------------------------
+	 */
+	function showConfirmation(data) {
+		let message = '';
+
+		message += 'Please confirm production\n\n';
+
+		message += 'Date : ' + data.date + '\n';
+		message += 'Machine : ' + data.machineName + '\n';
+		message += 'Operator : ' + data.operatorName + '\n';
+		message += 'Bags : ' + data.bags + '\n';
+		message += 'Rounds : ' + data.rounds + '\n\n';
+
+		message += 'Running Products\n';
+		message += '--------------------------\n';
+
+		data.products.forEach((product) => {
+			message += product.productName + ' (Mould ' + product.mould + ')\n';
+		});
+
+		const confirmed = confirm(message);
+
+		if (!confirmed) {
+			return;
+		}
+
+		google.script.run
+			.withSuccessHandler(onProductionSubmitted)
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+			.submitProduction(data);
+	}
+
+	function onProductionSubmitted(response) {
+		if (response.duplicate) {
+			alert(response.message);
+
+			return;
+		}
+
+		if (response.success) {
+			alert(
+				'Production submitted successfully.\n\nEntry ID : ' + response.entryId,
+			);
+
+			resetProductionForm();
+
+			return;
+		}
+
+		alert('Unknown error.');
+	}
+
+	/**
+	 * ===========================================================
+	 * Machine Setup
+	 * ===========================================================
+	 */
+
+	function initializeMachineSetup() {
+		loadMachineSetup();
+
+		document
+			.getElementById('setupMachineSelect')
+			.addEventListener('change', onSetupMachineChanged);
+
+		document
+			.getElementById('addConfigRowBtn')
+			.addEventListener('click', addConfigurationRow);
+
+		document
+			.getElementById('resetConfigBtn')
+			.addEventListener('click', onSetupMachineChanged);
+
+		document
+			.getElementById('saveConfigBtn')
+			.addEventListener('click', onSaveConfiguration);
+	}
+
+	function loadMachineSetup() {
+		google.script.run
+			.withSuccessHandler(function (data) {
+				setupMachines = data.machines;
+				setupProducts = data.products;
+				populateSetupMachines();
+			})
+			.getMachineSetupData();
+	}
+
+	function populateSetupMachines() {
+		const dropdown = document.getElementById('setupMachineSelect');
+
+		dropdown.innerHTML = '';
+
+		const option = document.createElement('option');
+
+		option.value = '';
+
+		option.textContent = 'Select Machine';
+
+		dropdown.appendChild(option);
+
+		setupMachines.forEach((machine) => {
+			const opt = document.createElement('option');
+
+			opt.value = machine.id;
+
+			opt.textContent = machine.name;
+
+			dropdown.appendChild(opt);
+		});
+	}
+
+	function onSetupMachineChanged() {
+		const machineId = document.getElementById('setupMachineSelect').value;
+
+		if (machineId) {
+			google.script.run
+				.withSuccessHandler(renderConfigurationTable)
+				.getMachineConfigurationForEdit(machineId);
+		} else {
+			clearConfigurationTable();
+		}
+	}
+
+	function onSaveConfiguration() {
+		const machineId = document.getElementById('setupMachineSelect').value;
+
+		if (machineId === '') {
+			alert('Please select a machine.');
+
+			return;
+		}
+
+		let changeSet;
+
+		try {
+			changeSet = buildConfigurationChanges();
+		} catch (err) {
+			alert(err.message);
+			return;
+		}
+
+		google.script.run
+			.withSuccessHandler(function () {
+				alert('Configuration saved successfully.');
+
+				onSetupMachineChanged.call({
+					value: machineId,
+				});
+			})
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+			.saveMachineConfiguration(machineId, changeSet);
+	}
+
+	function renderConfigurationTable(config) {
+		setupConfiguration = JSON.parse(JSON.stringify(config));
+
+		const tbody = document.querySelector('#machineConfigTable tbody');
+
+		tbody.innerHTML = '';
+
+		if (config.length === 0) {
+			clearConfigurationTable();
+
+			return;
+		}
+
+		config.forEach((item) => {
+			tbody.appendChild(createConfigurationRow(item));
+		});
+	}
+
+	function createConfigurationRow(item) {
+		const tr = document.createElement('tr');
+
+		/*
+    ------------------------
+    Product
+    ------------------------
+    */
+
+		const tdProduct = document.createElement('td');
+
+		const productSelect = document.createElement('select');
+
+		setupProducts.forEach((product) => {
+			const option = document.createElement('option');
+
+			option.value = product.id;
+
+			option.textContent = product.name;
+
+			if (product.id === item.productId) {
+				option.selected = true;
+			}
+
+			productSelect.appendChild(option);
+		});
+
+		tdProduct.appendChild(productSelect);
+
+		/*
+    ------------------------
+    Mould
+    ------------------------
+    */
+
+		const tdMould = document.createElement('td');
+
+		const mouldInput = document.createElement('input');
+
+		mouldInput.type = 'number';
+
+		mouldInput.min = '1';
+
+		mouldInput.value = item.mould || '';
+
+		tdMould.appendChild(mouldInput);
+
+		/*
+    ------------------------
+    Delete
+    ------------------------
+    */
+
+		const tdAction = document.createElement('td');
+
+		const deleteButton = document.createElement('button');
+
+		deleteButton.type = 'button';
+
+		deleteButton.textContent = 'Delete';
+
+		deleteButton.className = 'secondary-btn';
+
+		deleteButton.style.height = '30px';
+
+		deleteButton.style.fontSize = '12px';
+
+		deleteButton.addEventListener('click', function () {
+			tr.remove();
+
+			const tbody = document.querySelector('#machineConfigTable tbody');
+
+			if (tbody.children.length === 0) {
+				clearConfigurationTable();
+			}
+		});
+
+		tdAction.appendChild(deleteButton);
+
+		tr.appendChild(tdProduct);
+		tr.appendChild(tdMould);
+		tr.appendChild(tdAction);
+
+		return tr;
+	}
+
+	function addConfigurationRow() {
+		const tbody = document.querySelector('#machineConfigTable tbody');
+
+		if (tbody.querySelector('.empty')) {
+			tbody.innerHTML = '';
+		}
+
+		tbody.appendChild(
+			createConfigurationRow({
+				productId: '',
+
+				mould: '',
+			}),
+		);
+	}
+
+	function clearConfigurationTable() {
+		document.querySelector('#machineConfigTable tbody').innerHTML = `
+        <tr>
+            <td colspan="3" class="empty">
+                Select a machine
+            </td>
+        </tr>
+    `;
+	}
+
+	function getCurrentConfiguration() {
+		const rows = document.querySelectorAll('#machineConfigTable tbody tr');
+
+		const configuration = [];
+
+		rows.forEach((row) => {
+			if (row.querySelector('.empty')) {
+				return;
+			}
+
+			configuration.push({
+				productId: row.cells[0].querySelector('select').value,
+				mould: Number(row.cells[1].querySelector('input').value),
+			});
+		});
+
+		return configuration;
+	}
+
+	function buildConfigurationChanges() {
+		const current = getCurrentConfiguration();
+
+		const originalMap = {};
+		const currentMap = {};
+
+		const changeSet = {
+			added: [],
+			removed: [],
+			updated: [],
+		};
+
+		/*
+    --------------------------------------
+    Build Original Map
+    --------------------------------------
+    */
+
+		setupConfiguration.forEach((item) => {
+			if (originalMap[item.productId]) {
+				throw new Error('Duplicate product found in existing configuration.');
+			}
+
+			originalMap[item.productId] = Number(item.mould);
+		});
+
+		/*
+    --------------------------------------
+    Build Current Map
+    --------------------------------------
+    */
+
+		current.forEach((item) => {
+			if (!item.productId) {
+				throw new Error('Please select a product in every row.');
+			}
+
+			if (!item.mould || item.mould <= 0) {
+				throw new Error('Invalid mould count.');
+			}
+
+			if (currentMap[item.productId]) {
+				throw new Error('Duplicate product found in machine configuration.');
+			}
+
+			currentMap[item.productId] = Number(item.mould);
+		});
+
+		/*
+    --------------------------------------
+    Removed
+    --------------------------------------
+    */
+
+		Object.keys(originalMap).forEach((productId) => {
+			if (!(productId in currentMap)) {
+				changeSet.removed.push({
+					productId: productId,
+					mould: originalMap[productId],
+				});
+			}
+		});
+
+		/*
+    --------------------------------------
+    Added
+    --------------------------------------
+    */
+
+		Object.keys(currentMap).forEach((productId) => {
+			if (!(productId in originalMap)) {
+				changeSet.added.push({
+					productId: productId,
+					mould: currentMap[productId],
+				});
+			}
+		});
+
+		/*
+    --------------------------------------
+    Updated
+    --------------------------------------
+    */
+
+		Object.keys(currentMap).forEach((productId) => {
+			if (!(productId in originalMap)) {
+				return;
+			}
+
+			if (originalMap[productId] !== currentMap[productId]) {
+				changeSet.updated.push({
+					productId: productId,
+					oldMould: originalMap[productId],
+					newMould: currentMap[productId],
+				});
+			}
+		});
+
+		return changeSet;
+	}
+</script>

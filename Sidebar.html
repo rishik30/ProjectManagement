@@ -1,0 +1,31 @@
+<!doctype html>
+
+<html>
+	<head>
+		<base target="_top" />
+
+		<?!= include('Styles'); ?>
+	</head>
+
+	<body>
+		<div class="header">
+			<h2>Production Management</h2>
+		</div>
+
+		<div class="tab-bar">
+			<button id="productionTab">Daily Production</button>
+
+			<button id="machineTab">Machine Setup</button>
+		</div>
+
+		<div id="content">
+			<div id="productionContent"><?!= include("ProductionHtml"); ?></div>
+
+			<div id="machineContent"><?!= include("MachineSetupHtml"); ?></div>
+		</div>
+		<script>
+			const DEFAULT_TAB = '<?= activeTab ?>';
+		</script>
+		<?!= include('Scripts'); ?>
+	</body>
+</html>

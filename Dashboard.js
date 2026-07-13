@@ -1,0 +1,532 @@
+/**
+ * ===========================================================
+ * Dashboard.gs
+ * Module 4A - Part 1
+ * ===========================================================
+ */
+
+function openDashboard() {
+	refreshDashboard();
+}
+
+/**
+ * ===========================================================
+ * Dashboard Refresh Engine
+ * ===========================================================
+ */
+
+function refreshDashboard() {
+	const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+	let sheet = ss.getSheetByName(SHEETS.DASHBOARD);
+
+	if (!sheet) {
+		sheet = ss.insertSheet(SHEETS.DASHBOARD);
+	}
+
+	const rebuilt = ensureDashboardInfrastructure(sheet);
+
+	if (!rebuilt) {
+		const uiFilters = getDashboardFilterValues(sheet);
+
+		const filters = normalizeDashboardFilters(uiFilters);
+
+		refreshDashboardData(sheet, filters);
+	}
+
+	ss.setActiveSheet(sheet);
+}
+
+function buildDashboardLayout(sheet) {
+	buildDashboardLookupSheet();
+
+	sheet.clear();
+
+	sheet.setHiddenGridlines(true);
+
+	buildDashboardTitle(sheet);
+
+	buildFilterSection(sheet);
+
+	applyDashboardValidation(sheet);
+
+	buildKpiSection(sheet);
+}
+
+function buildDashboardTitle(sheet) {
+	sheet
+		.getRange('A1:H1')
+		.merge()
+		.setValue('FACTORY PRODUCTION DASHBOARD')
+		.setFontSize(18)
+		.setFontWeight('bold')
+		.setHorizontalAlignment('center')
+		.setVerticalAlignment('middle');
+
+	sheet.setRowHeight(1, 40);
+}
+
+function buildFilterSection(sheet) {
+	const filters = getDashboardFilters();
+
+	/*
+	 * Labels
+	 */
+
+	const labels = [
+		['Date Range'],
+		['From Date'],
+		['To Date'],
+		['Machine'],
+		['Operator'],
+		['Product'],
+	];
+
+	sheet
+		.getRange(3, 1, labels.length, 1)
+		.setValues(labels)
+		.setFontWeight('bold');
+
+	/*
+	 * Default Values
+	 */
+
+	const today = new Date();
+
+	const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+	sheet.getRange('B3').setValue('Current Month');
+
+	sheet.getRange('B4').setValue(firstDay);
+
+	sheet.getRange('B5').setValue(today);
+
+	sheet.getRange('B4:B5').setNumberFormat('dd/MM/yyyy');
+
+	sheet.getRange('B6').setValue('All');
+
+	sheet.getRange('B7').setValue('All');
+
+	sheet.getRange('B8').setValue('All');
+
+	/*
+	 * Hidden Lists
+	 */
+
+	const startColumn = 20; // T
+
+	sheet.getRange(1, startColumn).setValue('DateRanges');
+
+	sheet
+		.getRange(2, startColumn, 7, 1)
+		.setValues([
+			['Today'],
+			['This Week'],
+			['This Month'],
+			['Last Month'],
+			['Last 3 Months'],
+			['Financial Year'],
+			['Custom'],
+		]);
+
+	sheet.getRange(1, startColumn + 1).setValue('Machines');
+
+	const machines = [['All']].concat(filters.machines.map((m) => [m.name]));
+
+	sheet.getRange(2, startColumn + 1, machines.length, 1).setValues(machines);
+
+	sheet.getRange(1, startColumn + 2).setValue('Operators');
+
+	const operators = [['All']].concat(filters.operators.map((o) => [o.name]));
+
+	sheet.getRange(2, startColumn + 2, operators.length, 1).setValues(operators);
+
+	sheet.getRange(1, startColumn + 3).setValue('Products');
+
+	const products = [['All']].concat(filters.products.map((p) => [p.name]));
+
+	sheet.getRange(2, startColumn + 3, products.length, 1).setValues(products);
+}
+
+function buildDashboardPlaceholder(sheet) {
+	sheet
+		.getRange('A11:H11')
+		.merge()
+		.setValue('Dashboard will be generated here')
+		.setHorizontalAlignment('center')
+		.setFontWeight('bold');
+}
+
+/**
+ * ===========================================================
+ * Dashboard Filter Data
+ * ===========================================================
+ */
+
+function getDashboardFilters() {
+	return {
+		machines: getMachines(),
+		operators: getOperators(),
+		products: getAllProducts(),
+	};
+}
+
+function applyDashboardValidation(sheet) {
+	const lookup = getDashboardLookupSheet();
+
+	sheet
+		.getRange('B3')
+		.setDataValidation(
+			SpreadsheetApp.newDataValidation()
+				.requireValueInRange(lookup.getRange('A2:A8'), true)
+				.build(),
+		);
+
+	sheet
+		.getRange('B6')
+		.setDataValidation(
+			SpreadsheetApp.newDataValidation()
+				.requireValueInRange(lookup.getRange('B2:B'), true)
+				.build(),
+		);
+
+	sheet
+		.getRange('B7')
+		.setDataValidation(
+			SpreadsheetApp.newDataValidation()
+				.requireValueInRange(lookup.getRange('C2:C'), true)
+				.build(),
+		);
+
+	sheet
+		.getRange('B8')
+		.setDataValidation(
+			SpreadsheetApp.newDataValidation()
+				.requireValueInRange(lookup.getRange('D2:D'), true)
+				.build(),
+		);
+}
+
+function getDashboardLookupSheet() {
+	const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+	let sheet = ss.getSheetByName(SHEETS.DASHBOARD_LOOKUPS);
+
+	if (!sheet) {
+		sheet = ss.insertSheet(SHEETS.DASHBOARD_LOOKUPS);
+
+		sheet.hideSheet();
+	}
+
+	return sheet;
+}
+
+function buildDashboardLookupSheet() {
+	const sheet = getDashboardLookupSheet();
+
+	sheet.clear();
+
+	const filters = getDashboardFilters();
+
+	sheet.getRange('A1').setValue('Date Ranges');
+
+	sheet.getRange('B1').setValue('Machines');
+
+	sheet.getRange('C1').setValue('Operators');
+
+	sheet.getRange('D1').setValue('Products');
+
+	/*
+	 * Date Ranges
+	 */
+
+	sheet
+		.getRange('A2:A8')
+		.setValues([
+			['Today'],
+
+			['This Week'],
+
+			['This Month'],
+
+			['Last Month'],
+
+			['Last 3 Months'],
+
+			['Financial Year'],
+
+			['Custom'],
+		]);
+
+	/*
+	 * Machines
+	 */
+
+	const machines = [['All']].concat(filters.machines.map((m) => [m.name]));
+
+	sheet.getRange(2, 2, machines.length, 1).setValues(machines);
+
+	/*
+	 * Operators
+	 */
+
+	const operators = [['All']].concat(filters.operators.map((o) => [o.name]));
+
+	sheet.getRange(2, 3, operators.length, 1).setValues(operators);
+
+	/*
+	 * Products
+	 */
+
+	const products = [['All']].concat(filters.products.map((p) => [p.name]));
+
+	sheet.getRange(2, 4, products.length, 1).setValues(products);
+}
+
+/**
+ * ===========================================================
+ * KPI Layout
+ * ===========================================================
+ */
+
+function buildKpiSection(sheet) {
+	sheet
+		.getRange('A11:F11')
+		.merge()
+		.setValue('Factory KPIs')
+		.setFontWeight('bold')
+		.setFontSize(14);
+
+	DASHBOARD.KPI_CARDS.forEach((card) => {
+		buildKpiCard(sheet, card.title, card.cell);
+	});
+}
+
+function buildKpiCard(sheet, title, startCell) {
+	const range = sheet.getRange(startCell);
+
+	const row = range.getRow();
+
+	const col = range.getColumn();
+
+	sheet
+		.getRange(row, col, 1, 2)
+		.merge()
+		.setValue(title)
+		.setFontWeight('bold')
+		.setHorizontalAlignment('center')
+		.setBackground('#E8F0FE');
+
+	sheet
+		.getRange(row + 1, col, 2, 2)
+		.merge()
+		.setValue('-')
+		.setFontSize(18)
+		.setFontWeight('bold')
+		.setHorizontalAlignment('center')
+		.setVerticalAlignment('middle');
+
+	formatKpiCard(sheet, row, col);
+}
+
+function formatKpiCard(sheet, row, col) {
+	sheet.getRange(row, col, 3, 2).setBorder(true, true, true, true, true, true);
+
+	sheet.setRowHeight(row, 24);
+
+	sheet.setRowHeight(row + 1, 28);
+
+	sheet.setRowHeight(row + 2, 28);
+}
+
+function updateKpiSection(sheet, kpi) {
+	DASHBOARD.KPI_CARDS.forEach((card) => {
+		let value = kpi[card.key];
+
+		if (value === undefined) {
+			value = '-';
+		}
+
+		if (typeof value === 'number') {
+			value = value.toFixed(card.decimals);
+		}
+
+		const range = sheet.getRange(card.cell);
+
+		sheet
+			.getRange(range.getRow() + 1, range.getColumn(), 2, 2)
+			.merge()
+			.setValue(value);
+	});
+}
+
+function testDashboardLayout() {
+	const sheet = getSheet(SHEETS.DASHBOARD);
+	ensureDashboardInfrastructure(sheet);
+}
+
+function testDashboardData() {
+	const sheet = getSheet(SHEETS.DASHBOARD);
+	refreshDashboardData(sheet);
+}
+
+function ensureDashboardLayout(sheet) {
+	const title = sheet.getRange('A1').getValue();
+
+	const hasFilters = sheet.getRange('A3').getValue() === 'Date Range';
+
+	if (title === 'FACTORY PRODUCTION DASHBOARD' && hasFilters) {
+		return false;
+	}
+
+	buildDashboardLayout(sheet);
+
+	return true;
+}
+
+function getDashboardFilterValues(sheet) {
+	return {
+		dateRange: sheet.getRange('B3').getValue(),
+		fromDate: sheet.getRange('B4').getValue(),
+		toDate: sheet.getRange('B5').getValue(),
+		machineId: sheet.getRange('B6').getValue(),
+		operatorId: sheet.getRange('B7').getValue(),
+		productId: sheet.getRange('B8').getValue(),
+	};
+}
+
+function handleDashboardEdit(e) {
+	const sheet = e.range.getSheet();
+
+	if (sheet.getName() !== SHEETS.DASHBOARD) {
+		return;
+	}
+
+	const a1 = e.range.getA1Notation();
+
+	const dashboardFilterCells = ['B3', 'B4', 'B5', 'B6', 'B7', 'B8'];
+
+	if (!dashboardFilterCells.includes(a1)) {
+		return;
+	}
+
+	/*
+	 * Date Range Preset Changed
+	 */
+
+	if (a1 === 'B3') {
+		applyDateRangeSelection(sheet);
+	}
+
+	/*
+	 * Read final values after any updates
+	 */
+
+	const uiFilters = getDashboardFilterValues(sheet);
+
+	const filters = normalizeDashboardFilters(uiFilters);
+
+	refreshDashboardData(sheet, filters);
+}
+
+function ensureDashboardInfrastructure(sheet) {
+	buildDashboardLookupSheet();
+	return ensureDashboardLayout(sheet);
+}
+
+function initializeDashboardFilters(sheet) {
+	applyDateRangeSelection(sheet);
+	const uiFilters = getDashboardFilterValues(sheet);
+	const filters = normalizeDashboardFilters(uiFilters);
+	refreshDashboardData(sheet, filters);
+}
+
+/**
+ * ===========================================================
+ * Dashboard Data Refresh
+ * ===========================================================
+ */
+
+function refreshDashboardData(sheet, filters) {
+	try {
+		if (!filters) {
+			const uiFilters = getDashboardFilterValues(sheet);
+			filters = normalizeDashboardFilters(uiFilters);
+		}
+
+		const dataset = getProductionDataset(filters);
+		const kpi = calculateKPIs(dataset);
+		updateKpiSection(sheet, kpi);
+	} catch (err) {
+		SpreadsheetApp.getUi().alert(err.message);
+	}
+}
+
+function applyDateRangeSelection(sheet) {
+	const option = sheet.getRange('B3').getValue();
+
+	if (option === 'Custom') {
+		return;
+	}
+
+	const range = resolveDateRange(option);
+
+	sheet.getRange('B4').setValue(range.fromDate);
+	sheet.getRange('B5').setValue(range.toDate);
+}
+
+function resolveDateRange(option) {
+	const today = new Date();
+
+	today.setHours(0, 0, 0, 0);
+
+	let fromDate;
+	let toDate;
+
+	switch (option) {
+		case 'Today':
+			fromDate = new Date(today);
+			toDate = new Date(today);
+			break;
+
+		case 'This Week':
+			fromDate = getStartOfWeek(today);
+			toDate = new Date(today);
+			break;
+
+		case 'This Month':
+			fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+
+			toDate = new Date(today);
+			break;
+
+		case 'Last Month':
+			fromDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+			toDate = new Date(today.getFullYear(), today.getMonth(), 0);
+
+			break;
+
+		case 'Last 3 Months':
+			fromDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+
+			toDate = new Date(today);
+			break;
+
+		case 'Financial Year':
+			return getFinancialYear(today);
+
+		default:
+			fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+
+			toDate = new Date(today);
+	}
+
+	fromDate.setHours(0, 0, 0, 0);
+	toDate.setHours(23, 59, 59, 999);
+
+	return {
+		fromDate,
+		toDate,
+	};
+}
