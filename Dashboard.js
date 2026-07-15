@@ -399,7 +399,33 @@ function refreshDashboardData(sheet, filters) {
 
 		const dataset = getProductionDataset(filters);
 		const kpi = calculateKPIs(dataset);
+
 		updateKpiSection(sheet, kpi);
+
+		updateSummaryTable(
+			sheet,
+			summarizeByProduct(dataset),
+			DASHBOARD.SUMMARY_TABLES.PRODUCT,
+		);
+
+		updateSummaryTable(
+			sheet,
+			summarizeByMachine(dataset),
+			DASHBOARD.SUMMARY_TABLES.MACHINE,
+		);
+
+		updateSummaryTable(
+			sheet,
+			summarizeByOperator(dataset),
+			DASHBOARD.SUMMARY_TABLES.OPERATOR,
+		);
+
+		updateSummaryTable(
+			sheet,
+			summarizeByDate(dataset),
+			DASHBOARD.SUMMARY_TABLES.DAILY,
+		);
+
 		SpreadsheetApp.flush();
 		setDashboardReady(sheet);
 	} catch (error) {
@@ -497,4 +523,110 @@ function setDashboardLoading(sheet) {
 
 function setDashboardError(sheet, error) {
 	setDashboardStatus(sheet, '🔴 ' + error.message);
+}
+
+/**
+ * ===========================================================
+ * Product Summary Table
+ * ===========================================================
+ */
+
+function updateProductSummaryTable(sheet, summary) {
+	clearProductSummaryTable(sheet);
+	drawProductSummaryHeader(sheet);
+	drawProductSummaryRows(sheet, summary);
+	formatProductSummaryTable(sheet, summary.length);
+}
+
+function clearProductSummaryTable(sheet) {
+	sheet.getRange('A22:B1000').clearContent();
+}
+
+function drawProductSummaryHeader(sheet) {
+	sheet
+		.getRange('A22:B22')
+		.merge()
+		.setValue('Product Summary')
+		.setFontWeight('bold')
+		.setFontSize(14);
+
+	sheet.getRange('A23').setValue('Product');
+
+	sheet.getRange('B23').setValue('Pieces');
+
+	sheet.getRange('A23:B23').setFontWeight('bold');
+}
+
+function drawProductSummaryRows(sheet, summary) {
+	if (summary.length === 0) {
+		sheet.getRange('A24').setValue('No production found.');
+
+		return;
+	}
+
+	summary.sort(function (a, b) {
+		return b.pieces - a.pieces;
+	});
+
+	const values = summary.map(function (item) {
+		return [item.productName, item.pieces];
+	});
+
+	sheet.getRange(24, 1, values.length, 2).setValues(values);
+}
+
+function formatProductSummaryTable(sheet, rows) {
+	if (rows === 0) {
+		return;
+	}
+
+	sheet.getRange(24, 2, rows, 1).setNumberFormat('#,##0');
+}
+
+function updateSummaryTable(sheet, summary, config) {
+	const startRow = config.startRow;
+	const startCol = config.startColumn;
+
+	sheet.getRange(startRow, startCol, 1000, 2).clearContent();
+
+	sheet
+		.getRange(startRow, startCol, 1, 2)
+		.merge()
+		.setValue(config.title)
+		.setFontWeight('bold')
+		.setFontSize(14);
+
+	sheet.getRange(startRow + 1, startCol).setValue(config.nameHeader);
+
+	sheet.getRange(startRow + 1, startCol + 1).setValue(config.valueHeader);
+
+	sheet.getRange(startRow + 1, startCol, 1, 2).setFontWeight('bold');
+
+	if (summary.length === 0) {
+		sheet.getRange(startRow + 2, startCol).setValue('No production found.');
+
+		return;
+	}
+
+	summary.sort((a, b) => b[config.valueField] - a[config.valueField]);
+
+	const values = summary.map((item) => {
+		let name = item[config.nameField];
+
+		if (name instanceof Date) {
+			name = Utilities.formatDate(
+				name,
+				Session.getScriptTimeZone(),
+				'dd/MM/yyyy',
+			);
+		}
+
+		return [name, item[config.valueField]];
+	});
+
+	sheet.getRange(startRow + 2, startCol, values.length, 2).setValues(values);
+
+	sheet
+		.getRange(startRow + 2, startCol + 1, values.length, 1)
+		.setNumberFormat('#,##0');
 }
