@@ -232,7 +232,11 @@
 	 * Submit
 	 * -----------------------------------------------------------
 	 */
-	function submitProductionForm() {
+	function submitProductionForm(event) {
+		const submitButton = event.target;
+		if (submitButton.disabled) {
+			return;
+		}
 		const data = buildProductionObject();
 
 		const validation = validateProduction(data);
@@ -243,7 +247,7 @@
 			return;
 		}
 
-		showConfirmation(data);
+		showConfirmation(data, submitButton);
 	}
 
 	/**
@@ -306,7 +310,11 @@
 	 * Confirmation
 	 * -----------------------------------------------------------
 	 */
-	function showConfirmation(data) {
+	function showConfirmation(data, submitButton) {
+		const totalDies = data.products.reduce(
+			(sum, product) => sum + Number(product.mould || 0),
+			0,
+		);
 		let message = '';
 
 		message += 'Please confirm production\n\n';
@@ -315,7 +323,8 @@
 		message += 'Machine : ' + data.machineName + '\n';
 		message += 'Operator : ' + data.operatorName + '\n';
 		message += 'Bags : ' + data.bags + '\n';
-		message += 'Rounds : ' + data.rounds + '\n\n';
+		message += 'Rounds : ' + data.rounds + '\n';
+		message += 'Total Dies : ' + totalDies + '\n\n';
 
 		message += 'Running Products\n';
 		message += '--------------------------\n';
@@ -330,15 +339,26 @@
 			return;
 		}
 
+		submitButton.disabled = true;
+
+		submitButton.textContent = 'Saving...';
+
 		google.script.run
-			.withSuccessHandler(onProductionSubmitted)
+			.withSuccessHandler((response) =>
+				onProductionSubmitted(response, submitButton),
+			)
 			.withFailureHandler(function (err) {
+				submitButton.disabled = false;
+				submitButton.textContent = 'Submit';
 				alert(err.message);
 			})
 			.submitProduction(data);
 	}
 
-	function onProductionSubmitted(response) {
+	function onProductionSubmitted(response, submitButton) {
+		submitButton.disabled = false;
+		submitButton.textContent = 'Submit';
+
 		if (response.duplicate) {
 			alert(response.message);
 

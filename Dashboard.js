@@ -284,22 +284,77 @@ function formatKpiCard(sheet, row, col) {
 
 function updateKpiSection(sheet, kpi) {
 	DASHBOARD.KPI_CARDS.forEach((card) => {
+		const range = sheet.getRange(card.cell);
+
+		const valueRange = sheet.getRange(
+			range.getRow() + 1,
+			range.getColumn(),
+			2,
+			2,
+		);
+
+		valueRange.breakApart();
+
 		let value = kpi[card.key];
 
-		if (value === undefined) {
+		if (value === undefined || value === null || value === '') {
 			value = '-';
 		}
 
+		/*
+		 * Highest & Lowest Production Cards
+		 */
+		if (
+			card.key === 'highestProductionPieces' ||
+			card.key === 'lowestProductionPieces'
+		) {
+			const dateKey =
+				card.key === 'highestProductionPieces'
+					? 'highestProductionDate'
+					: 'lowestProductionDate';
+
+			let displayText = '-';
+
+			if (value !== '-') {
+				if (typeof value === 'number') {
+					value = value.toFixed(card.decimals);
+				}
+
+				let dateText = '-';
+
+				if (kpi[dateKey]) {
+					dateText = Utilities.formatDate(
+						new Date(kpi[dateKey]),
+						Session.getScriptTimeZone(),
+						'dd/MM/yyyy',
+					);
+				}
+
+				displayText = value + '\n' + dateText;
+			}
+
+			valueRange
+				.merge()
+				.setValue(displayText)
+				.setWrap(true)
+				.setHorizontalAlignment('center')
+				.setVerticalAlignment('middle');
+
+			return;
+		}
+
+		/*
+		 * All Other KPI Cards
+		 */
 		if (typeof value === 'number') {
 			value = value.toFixed(card.decimals);
 		}
 
-		const range = sheet.getRange(card.cell);
-
-		sheet
-			.getRange(range.getRow() + 1, range.getColumn(), 2, 2)
+		valueRange
 			.merge()
-			.setValue(value);
+			.setValue(value)
+			.setHorizontalAlignment('center')
+			.setVerticalAlignment('middle');
 	});
 }
 
@@ -401,6 +456,7 @@ function refreshDashboardData(sheet, filters) {
 		const kpi = calculateKPIs(dataset);
 
 		updateKpiSection(sheet, kpi);
+		updateProductionHighlights(sheet, kpi);
 
 		updateSummaryTable(
 			sheet,
@@ -608,7 +664,11 @@ function updateSummaryTable(sheet, summary, config) {
 		return;
 	}
 
-	summary.sort((a, b) => b[config.valueField] - a[config.valueField]);
+	if (config === DASHBOARD.SUMMARY_TABLES.DAILY) {
+		summary.sort((a, b) => a.productionDateOnly - b.productionDateOnly);
+	} else {
+		summary.sort((a, b) => b[config.valueField] - a[config.valueField]);
+	}
 
 	const values = summary.map((item) => {
 		let name = item[config.nameField];
@@ -629,4 +689,84 @@ function updateSummaryTable(sheet, summary, config) {
 	sheet
 		.getRange(startRow + 2, startCol + 1, values.length, 1)
 		.setNumberFormat('#,##0');
+}
+
+function updateProductionHighlights(sheet, kpi) {
+	const layout = DASHBOARD_LAYOUT.HIGHLIGHTS;
+
+	clearProductionHighlights(sheet);
+
+	sheet
+		.getRange(layout.TITLE_ROW, 1, 1, 10)
+		.merge()
+		.setValue('Production Highlights')
+		.setFontWeight('bold')
+		.setFontSize(14)
+		.setHorizontalAlignment('center');
+
+	drawProductionHighlight(
+		sheet,
+		layout.LEFT,
+		'Highest Production',
+		kpi.highestProductionPieces,
+		kpi.highestProductionDate,
+	);
+
+	drawProductionHighlight(
+		sheet,
+		layout.RIGHT,
+		'Lowest Production',
+		kpi.lowestProductionPieces,
+		kpi.lowestProductionDate,
+	);
+}
+
+function clearProductionHighlights(sheet) {
+	const layout = DASHBOARD_LAYOUT.HIGHLIGHTS;
+	sheet.getRange(layout.TITLE_ROW, 1, 5, 10).clearContent();
+}
+
+function drawProductionHighlight(sheet, layout, title, pieces, date) {
+	sheet
+		.getRange(layout.ROW, layout.COLUMN, 1, layout.WIDTH)
+		.merge()
+		.setBorder(true, true, true, true, true, true)
+		.setValue(title)
+		.setBackground('#E8F0FE')
+		.setFontWeight('bold')
+		.setHorizontalAlignment('center')
+		.setVerticalAlignment('middle');
+
+	const body = sheet.getRange(
+		layout.ROW + 1,
+		layout.COLUMN,
+		layout.HEIGHT - 1,
+		layout.WIDTH,
+	);
+
+	body
+		.merge()
+		.setBorder(true, true, true, true, true, true)
+		.setFontWeight('bold')
+		.setFontSize(14)
+		.setHorizontalAlignment('center')
+		.setVerticalAlignment('middle')
+		.setWrap(true);
+
+	if (!pieces || !date) {
+		body.setValue('-');
+		return;
+	}
+
+	body.setValue(
+		Utilities.formatString(
+			'%s Pieces\n\n%s',
+			Number(pieces).toLocaleString(),
+			Utilities.formatDate(
+				new Date(date),
+				Session.getScriptTimeZone(),
+				'dd/MM/yyyy',
+			),
+		),
+	);
 }

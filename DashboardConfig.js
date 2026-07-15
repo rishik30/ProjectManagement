@@ -4,6 +4,48 @@
  * ===========================================================
  */
 
+const DASHBOARD_LAYOUT = {
+	TITLE: {
+		ROW: 1,
+		COLUMN: 1,
+		WIDTH: 10,
+	},
+
+	STATUS: {
+		ROW: 2,
+		COLUMN: 1,
+		WIDTH: 10,
+	},
+
+	KPI: {
+		TITLE_ROW: 11,
+		TITLE_COLUMN: 1,
+		TITLE_WIDTH: 10,
+	},
+
+	HIGHLIGHTS: {
+		TITLE_ROW: 21,
+
+		LEFT: {
+			ROW: 22,
+			COLUMN: 1,
+			WIDTH: 5,
+			HEIGHT: 4,
+		},
+
+		RIGHT: {
+			ROW: 22,
+			COLUMN: 6,
+			WIDTH: 5,
+			HEIGHT: 4,
+		},
+	},
+
+	SUMMARIES: {
+		START_ROW: 27,
+	},
+};
+
 const DASHBOARD = {
 	DATE_RANGES: [
 		'Today',
@@ -62,11 +104,24 @@ const DASHBOARD = {
 			cell: 'E17',
 			decimals: 2,
 		},
+		{
+			key: 'uniqueProducts',
+			title: 'Unique Products',
+			cell: 'G13',
+			decimals: 0,
+		},
+
+		{
+			key: 'uniqueDies',
+			title: 'Unique Dies',
+			cell: 'I13',
+			decimals: 0,
+		},
 	],
 	SUMMARY_TABLES: {
 		PRODUCT: {
 			title: 'Product Summary',
-			startRow: 22,
+			startRow: DASHBOARD_LAYOUT.SUMMARIES.START_ROW,
 			startColumn: 1,
 			nameField: 'productName',
 			valueField: 'pieces',
@@ -76,7 +131,7 @@ const DASHBOARD = {
 
 		MACHINE: {
 			title: 'Machine Summary',
-			startRow: 22,
+			startRow: DASHBOARD_LAYOUT.SUMMARIES.START_ROW,
 			startColumn: 4,
 			nameField: 'machineName',
 			valueField: 'pieces',
@@ -86,7 +141,7 @@ const DASHBOARD = {
 
 		OPERATOR: {
 			title: 'Operator Summary',
-			startRow: 22,
+			startRow: DASHBOARD_LAYOUT.SUMMARIES.START_ROW,
 			startColumn: 7,
 			nameField: 'operatorName',
 			valueField: 'pieces',
@@ -96,7 +151,7 @@ const DASHBOARD = {
 
 		DAILY: {
 			title: 'Daily Summary',
-			startRow: 22,
+			startRow: DASHBOARD_LAYOUT.SUMMARIES.START_ROW,
 			startColumn: 10,
 			nameField: 'productionDateOnly',
 			valueField: 'pieces',

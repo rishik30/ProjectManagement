@@ -191,6 +191,12 @@ function calculateKPIs(dataset) {
 		activeMachines: 0,
 		avgPiecesPerBag: 0,
 		avgPiecesPerRound: 0,
+		uniqueProducts: 0,
+		uniqueDies: 0,
+		highestProductionDate: null,
+		highestProductionPieces: 0,
+		lowestProductionDate: null,
+		lowestProductionPieces: 0,
 	};
 
 	const machineSet = new Set();
@@ -212,7 +218,67 @@ function calculateKPIs(dataset) {
 		kpi.avgPiecesPerRound = kpi.totalPieces / kpi.totalRounds;
 	}
 
+	const productSet = new Set();
+	const dieMap = {};
+
+	dataset.forEach((record) => {
+		productSet.add(record.productId);
+		if (!dieMap[record.productId]) {
+			dieMap[record.productId] = record.mould;
+		}
+	});
+	kpi.uniqueProducts = productSet.size;
+	kpi.uniqueDies = Object.values(dieMap).reduce((sum, mould) => sum + mould, 0);
+
+	const { highest, lowest } = getHighestAndLowestProductionData(dataset);
+	if (highest) {
+		kpi.highestProductionDate = highest.productionDateOnly;
+		kpi.highestProductionPieces = highest.pieces;
+	}
+
+	if (lowest) {
+		kpi.lowestProductionDate = lowest.productionDateOnly;
+		kpi.lowestProductionPieces = lowest.pieces;
+	}
+
 	return kpi;
+}
+
+function getHighestAndLowestProductionData(dataset) {
+	const daily = summarizeByDate(dataset);
+	let highest = null;
+	let lowest = null;
+
+	daily.forEach((day) => {
+		if (
+			highest === null ||
+			day.pieces > highest.pieces ||
+			(day.pieces === highest.pieces &&
+				day.productionDateOnly > highest.productionDateOnly)
+		) {
+			highest = day;
+		}
+	});
+
+	daily.forEach((day) => {
+		if (day.pieces <= 0) {
+			return;
+		}
+
+		if (
+			lowest === null ||
+			day.pieces < lowest.pieces ||
+			(day.pieces === lowest.pieces &&
+				day.productionDateOnly > lowest.productionDateOnly)
+		) {
+			lowest = day;
+		}
+	});
+
+	return {
+		highest,
+		lowest,
+	};
 }
 
 function testKPIs() {
