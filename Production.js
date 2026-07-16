@@ -221,7 +221,7 @@ function writeHeader(data) {
 
 		Session.getActiveUser().getEmail(),
 
-		getFinancialYear(productionDate),
+		getFinancialYearText(productionDate),
 
 		getMonthName(productionDate),
 

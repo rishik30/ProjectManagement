@@ -542,7 +542,7 @@ function resolveDateRange(option) {
 			break;
 
 		case 'Financial Year':
-			return getFinancialYear(today);
+			return getFinancialYearObject(today);
 
 		default:
 			fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -586,58 +586,6 @@ function setDashboardError(sheet, error) {
  * Product Summary Table
  * ===========================================================
  */
-
-function updateProductSummaryTable(sheet, summary) {
-	clearProductSummaryTable(sheet);
-	drawProductSummaryHeader(sheet);
-	drawProductSummaryRows(sheet, summary);
-	formatProductSummaryTable(sheet, summary.length);
-}
-
-function clearProductSummaryTable(sheet) {
-	sheet.getRange('A22:B1000').clearContent();
-}
-
-function drawProductSummaryHeader(sheet) {
-	sheet
-		.getRange('A22:B22')
-		.merge()
-		.setValue('Product Summary')
-		.setFontWeight('bold')
-		.setFontSize(14);
-
-	sheet.getRange('A23').setValue('Product');
-
-	sheet.getRange('B23').setValue('Pieces');
-
-	sheet.getRange('A23:B23').setFontWeight('bold');
-}
-
-function drawProductSummaryRows(sheet, summary) {
-	if (summary.length === 0) {
-		sheet.getRange('A24').setValue('No production found.');
-
-		return;
-	}
-
-	summary.sort(function (a, b) {
-		return b.pieces - a.pieces;
-	});
-
-	const values = summary.map(function (item) {
-		return [item.productName, item.pieces];
-	});
-
-	sheet.getRange(24, 1, values.length, 2).setValues(values);
-}
-
-function formatProductSummaryTable(sheet, rows) {
-	if (rows === 0) {
-		return;
-	}
-
-	sheet.getRange(24, 2, rows, 1).setNumberFormat('#,##0');
-}
 
 function updateSummaryTable(sheet, summary, config) {
 	const startRow = config.startRow;

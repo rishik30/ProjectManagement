@@ -49,7 +49,7 @@ function getMonthName(date) {
  * April 2026 -> 2026-27
  * January 2027 -> 2026-27
  */
-function getFinancialYear(date) {
+function getFinancialYearText(date) {
 	let startYear;
 
 	if (date.getMonth() >= 3) {
@@ -92,7 +92,7 @@ function getStartOfWeek(date) {
 	return d;
 }
 
-function getFinancialYear(date) {
+function getFinancialYearObject(date) {
 	const year =
 		date.getMonth() >= 3 ? date.getFullYear() : date.getFullYear() - 1;
 
