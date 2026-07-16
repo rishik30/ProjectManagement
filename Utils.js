@@ -102,3 +102,98 @@ function getFinancialYearObject(date) {
 		to: new Date(year + 1, 2, 31),
 	};
 }
+
+/**
+ * ===========================================================
+ * System Error Logging
+ * ===========================================================
+ */
+
+const SYSTEM_LOG_SHEET = '_System_Log';
+
+/**
+ * Returns the system log sheet.
+ * Creates it automatically if it doesn't exist.
+ */
+function getSystemLogSheet() {
+	const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+	let sheet = ss.getSheetByName(SYSTEM_LOG_SHEET);
+
+	if (!sheet) {
+		sheet = ss.insertSheet(SYSTEM_LOG_SHEET);
+
+		sheet.appendRow([
+			'Timestamp',
+			'User',
+			'Function',
+			'Error Message',
+			'Stack Trace',
+			'Context',
+		]);
+
+		sheet.hideSheet();
+	}
+
+	return sheet;
+}
+
+/**
+ * Logs unexpected application errors.
+ *
+ * Logging should never interrupt the main execution.
+ */
+function logError(functionName, error, context) {
+	try {
+		const sheet = getSystemLogSheet();
+
+		sheet.appendRow([
+			new Date(),
+			Session.getActiveUser().getEmail(),
+			functionName,
+			error && error.message ? error.message : String(error),
+			error && error.stack ? error.stack : '',
+			context ? JSON.stringify(context) : '',
+		]);
+	} catch (loggingError) {
+		// Never allow logging failures to interrupt application flow.
+	}
+}
+
+/**
+ * ===========================================================
+ * System Validation
+ * ===========================================================
+ */
+
+function validateSystem() {
+	const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+	const requiredSheets = [
+		SHEETS.USERS,
+		SHEETS.PRODUCT_MASTER,
+		SHEETS.MACHINE_MASTER,
+		SHEETS.MACHINE_CONFIGURATION,
+		SHEETS.MACHINE_HISTORY,
+		SHEETS.DAILY_HEADER,
+		SHEETS.DAILY_DETAIL,
+		SHEETS.DASHBOARD,
+	];
+
+	const missingSheets = requiredSheets.filter(
+		(name) => !ss.getSheetByName(name),
+	);
+
+	if (missingSheets.length === 0) {
+		SpreadsheetApp.getUi().alert(
+			'✅ System Validation Successful.\n\nAll required sheets are present.',
+		);
+
+		return;
+	}
+
+	const message =
+		'The following required sheets are missing:\n\n' + missingSheets.join('\n');
+
+	SpreadsheetApp.getUi().alert(message);
+}

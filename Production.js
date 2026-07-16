@@ -330,23 +330,35 @@ function testWriteDetails() {
  * ===========================================================
  */
 function submitProduction(data) {
-	if (checkDuplicateEntry(data.date, data.machineId)) {
-		return {
-			success: false,
-			duplicate: true,
-			message: 'Production entry already exists for this Machine and Date.',
-		};
+	try {
+		const lock = LockService.getDocumentLock();
+		lock.waitLock(20000);
+
+		try {
+			if (checkDuplicateEntry(data.date, data.machineId)) {
+				return {
+					success: false,
+					duplicate: true,
+					message: 'Production entry already exists for this Machine and Date.',
+				};
+			}
+
+			const entryId = writeHeader(data);
+
+			writeDetails(entryId, data);
+
+			return {
+				success: true,
+				duplicate: false,
+				entryId: entryId,
+			};
+		} finally {
+			lock.releaseLock();
+		}
+	} catch (error) {
+		logError('submitProduction', error, data);
+		throw error;
 	}
-
-	const entryId = writeHeader(data);
-
-	writeDetails(entryId, data);
-
-	return {
-		success: true,
-		duplicate: false,
-		entryId: entryId,
-	};
 }
 
 function testSubmitProduction() {

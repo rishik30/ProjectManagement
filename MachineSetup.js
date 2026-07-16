@@ -63,7 +63,6 @@ function getAllProducts() {
  */
 function saveMachineConfiguration(machineId, changeSet) {
 	const lock = LockService.getDocumentLock();
-
 	lock.waitLock(30000);
 
 	try {
@@ -76,6 +75,12 @@ function saveMachineConfiguration(machineId, changeSet) {
 		return {
 			success: true,
 		};
+	} catch (error) {
+		logError('saveMachineConfiguration', error, {
+			machineId,
+			changeSet,
+		});
+		throw error;
 	} finally {
 		lock.releaseLock();
 	}

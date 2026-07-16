@@ -485,7 +485,10 @@ function refreshDashboardData(sheet, filters) {
 		SpreadsheetApp.flush();
 		setDashboardReady(sheet);
 	} catch (error) {
+		logError('refreshDashboardData', error, filters);
+
 		setDashboardError(sheet, error);
+
 		throw error;
 	}
 }

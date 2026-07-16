@@ -18,6 +18,8 @@ function onOpen() {
 
 		.addItem('Dashboard', 'openDashboard')
 
+		.addItem('Validate System', 'validateSystem')
+
 		.addSeparator()
 
 		.addItem('About', 'aboutSystem')
