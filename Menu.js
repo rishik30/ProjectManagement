@@ -14,9 +14,17 @@ function onOpen() {
 
 		.addSeparator()
 
-		.addItem('Generate Report', 'generateReport')
+		.addItem('Product Report', 'generateProductReport')
+
+		.addItem('Machine Report', 'generateMachineReport')
+
+		.addItem('Daily Report', 'generateDailyReport')
 
 		.addItem('Dashboard', 'openDashboard')
+
+		.addSeparator()
+
+		.addItem('Export Current Report (PDF)', 'exportCurrentReportPdf')
 
 		.addItem('Validate System', 'validateSystem')
 

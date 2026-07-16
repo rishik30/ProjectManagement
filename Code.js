@@ -24,6 +24,7 @@ const SHEETS = {
 	MACHINE_REPORT: 'Machine_Report',
 	DASHBOARD: 'Dashboard',
 	VALIDATION: 'Validation',
+	REPORT: 'Report',
 };
 
 const SIDEBAR = {
