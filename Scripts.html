@@ -2,6 +2,8 @@
 	let machines = [];
 	let operators = [];
 	let currentProducts = [];
+	let editMode = false;
+	let editingEntryId = '';
 	let setupMachines = [];
 	let setupProducts = [];
 	let setupConfiguration = [];
@@ -17,6 +19,7 @@
 		document.getElementById('prodDate').valueAsDate = new Date();
 
 		loadMasters();
+		initializeSearch();
 
 		document
 			.getElementById('machineSelect')
@@ -33,6 +36,14 @@
 		initializeTabs();
 
 		initializeMachineSetup();
+
+		const pendingEdit = sessionStorage.getItem('productionEditEntry');
+
+		if (pendingEdit) {
+			sessionStorage.removeItem('productionEditEntry');
+
+			loadProductionForEdit(JSON.parse(pendingEdit));
+		}
 	}
 
 	function initializeTabs() {
@@ -112,6 +123,17 @@
 			option.textContent = machine.name;
 
 			dropdown.appendChild(option);
+
+			// Populating search machine dropdown
+			const searchDropdown = document.getElementById('searchMachine');
+
+			const searchOption = document.createElement('option');
+
+			searchOption.value = machine.id;
+
+			searchOption.textContent = machine.name;
+
+			searchDropdown.appendChild(searchOption);
 		});
 	}
 
@@ -133,6 +155,17 @@
 			option.textContent = operator.name;
 
 			dropdown.appendChild(option);
+
+			// Populating search operator dropdown
+			const searchDropdown = document.getElementById('searchOperator');
+
+			const searchOption = document.createElement('option');
+
+			searchOption.value = operator.id;
+
+			searchOption.textContent = operator.name;
+
+			searchDropdown.appendChild(searchOption);
 		});
 	}
 
@@ -157,6 +190,10 @@
 				machine.defaultOperatorId;
 		}
 
+		if (editMode) {
+			return;
+		}
+
 		google.script.run
 			.withSuccessHandler(renderRunningProducts)
 			.getMachineConfiguration(machineId);
@@ -168,6 +205,8 @@
 	 * -----------------------------------------------------------
 	 */
 	function renderRunningProducts(products) {
+		products = products || currentProducts || [];
+
 		currentProducts = products;
 
 		const tbody = document.querySelector('#runningProductsTable tbody');
@@ -216,7 +255,9 @@
 	function resetProductionForm() {
 		document.getElementById('prodDate').valueAsDate = new Date();
 
-		document.getElementById('machineSelect').selectedIndex = 0;
+		const machineSelect = document.getElementById('machineSelect');
+		machineSelect.selectedIndex = 0;
+		machineSelect.disabled = false;
 
 		document.getElementById('operatorSelect').selectedIndex = 0;
 
@@ -225,6 +266,12 @@
 		document.getElementById('rounds').value = '';
 
 		clearRunningProducts();
+
+		editMode = false;
+
+		editingEntryId = '';
+
+		document.getElementById('submitProductionBtn').textContent = 'Submit';
 	}
 
 	/**
@@ -234,15 +281,47 @@
 	 */
 	function submitProductionForm(event) {
 		const submitButton = event.target;
-		if (submitButton.disabled) {
-			return;
-		}
+
+		if (submitButton.disabled) return;
+
 		const data = buildProductionObject();
 
 		const validation = validateProduction(data);
 
 		if (validation !== true) {
 			alert(validation);
+
+			return;
+		}
+
+		if (editMode) {
+			submitButton.disabled = true;
+
+			google.script.run
+
+				.withSuccessHandler(function () {
+					alert('Production updated successfully.');
+
+					editMode = false;
+					editingEntryId = '';
+
+					submitButton.disabled = false;
+					submitButton.textContent = 'Submit';
+
+					resetProductionForm();
+
+					resetProductionForm();
+
+					document.getElementById('searchProductionBtn').click();
+				})
+
+				.withFailureHandler(function (err) {
+					submitButton.disabled = false;
+
+					alert(err.message);
+				})
+
+				.updateProduction(editingEntryId, data);
 
 			return;
 		}
@@ -303,6 +382,180 @@
 
 			products: currentProducts,
 		};
+	}
+
+	function loadProductionForEdit(entry) {
+		editMode = true;
+
+		editingEntryId = entry.header.entryId;
+
+		// Populate form
+
+		document.getElementById('prodDate').value = new Date(entry.header.date)
+			.toISOString()
+			.split('T')[0];
+
+		const machineSelect = document.getElementById('machineSelect');
+		machineSelect.value = entry.header.machineId;
+		machineSelect.disabled = true;
+
+		document.getElementById('operatorSelect').value = entry.header.operatorId;
+
+		document.getElementById('bags').value = entry.header.bags;
+
+		document.getElementById('rounds').value = entry.header.rounds;
+
+		currentProducts = entry.details.map(function (item) {
+			return {
+				productId: item.productId,
+
+				productName: item.productName,
+
+				mould: Number(item.mould),
+
+				pieces: Number(item.pieces),
+			};
+		});
+
+		renderRunningProducts(currentProducts);
+
+		document.getElementById('submitProductionBtn').textContent = 'Update Entry';
+
+		document.getElementById('production-page').scrollIntoView({
+			behavior: 'smooth',
+			block: 'start',
+		});
+	}
+
+	function initializeSearch() {
+		document
+			.getElementById('searchProductionBtn')
+			.addEventListener('click', searchProduction);
+
+		document
+			.getElementById('clearSearchBtn')
+			.addEventListener('click', clearSearch);
+	}
+
+	function searchProduction() {
+		const criteria = {
+			entryId: document.getElementById('searchEntryId').value.trim(),
+			date: document.getElementById('searchDate').value,
+			machineId: document.getElementById('searchMachine').value,
+			operatorId: document.getElementById('searchOperator').value,
+		};
+
+		google.script.run
+			.withSuccessHandler(renderSearchResults)
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+			.searchProductionEntries(criteria);
+	}
+
+	function renderSearchResults(results) {
+		results = results || [];
+
+		const container = document.getElementById('searchResultsContainer');
+
+		if (results.length === 0) {
+			container.innerHTML =
+				"<div class='empty'>No matching records found.</div>";
+
+			return;
+		}
+
+		let html = `
+        <table class="search-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>Entry ID</th>
+
+                    <th>Date</th>
+
+                    <th>Machine</th>
+
+                    <th>Operator</th>
+
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+    `;
+
+		results.forEach(function (item) {
+			html += `
+
+            <tr>
+
+                <td>${item.entryId}</td>
+
+                <td>${formatSearchDate(item.date)}</td>
+
+                <td>${item.machineName}</td>
+
+                <td>${item.operatorName}</td>
+
+                <td>
+
+                    <button
+                        class="primary-btn"
+                        onclick="editProductionEntry('${item.entryId}')">
+
+                        Edit
+
+                    </button>
+
+										<button
+												class="delete-btn"
+												onclick="confirmDeleteProduction('${item.entryId}')">
+												Delete
+										</button>
+
+                </td>
+
+            </tr>
+
+        `;
+		});
+
+		html += '</tbody></table>';
+
+		container.innerHTML = html;
+	}
+
+	function formatSearchDate(value) {
+		if (!value) return '';
+		const d = new Date(value);
+		return d.toLocaleDateString('en-GB');
+	}
+
+	function editProductionEntry(entryId) {
+		google.script.run
+			.withSuccessHandler(loadProductionForEdit)
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+			.getProductionEntry(entryId);
+	}
+
+	function clearSearch() {
+		document.getElementById('searchEntryId').value = '';
+
+		document.getElementById('searchDate').value = '';
+
+		document.getElementById('searchMachine').selectedIndex = 0;
+
+		document.getElementById('searchOperator').selectedIndex = 0;
+
+		document.getElementById('searchResultsContainer').innerHTML =
+			'No records searched.';
 	}
 
 	/**
@@ -730,5 +983,28 @@
 		});
 
 		return changeSet;
+	}
+
+	function confirmDeleteProduction(entryId) {
+		const confirmed = confirm(
+			`Are you sure you want to delete Production Entry ${entryId}?\n\nThis action cannot be undone.`,
+		);
+
+		if (!confirmed) return;
+
+		google.script.run
+			.withSuccessHandler(function () {
+				alert('Production entry deleted successfully.');
+
+				document.getElementById('searchProductionBtn').click();
+
+				if (editMode && editingEntryId === entryId) {
+					resetProductionForm();
+				}
+			})
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+			.deleteProduction(entryId);
 	}
 </script>

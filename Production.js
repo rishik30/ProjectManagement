@@ -361,6 +361,126 @@ function submitProduction(data) {
 	}
 }
 
+/**
+ * ===========================================================
+ * Updates an existing production entry
+ * ===========================================================
+ */
+function updateProduction(entryId, data) {
+	try {
+		const lock = LockService.getDocumentLock();
+		lock.waitLock(20000);
+
+		try {
+			updateHeader(entryId, data);
+			updateDetails(entryId, data);
+
+			return {
+				success: true,
+				entryId,
+			};
+		} finally {
+			lock.releaseLock();
+		}
+	} catch (error) {
+		logError('updateProduction', error, {
+			entryId,
+			data,
+		});
+
+		throw error;
+	}
+}
+
+/**
+ * Updates header row.
+ */
+function updateHeader(entryId, data) {
+	const sheet = getSheet(SHEETS.DAILY_HEADER);
+
+	const values = sheet.getDataRange().getValues();
+
+	const headers = values[0];
+
+	const map = buildHeaderColumnMap(headers);
+
+	for (let i = 1; i < values.length; i++) {
+		if (values[i][map.entryId] === entryId) {
+			sheet
+				.getRange(i + 1, map.productionDate + 1)
+				.setValue(new Date(data.date));
+			sheet.getRange(i + 1, map.machineId + 1).setValue(data.machineId);
+			sheet.getRange(i + 1, map.machineName + 1).setValue(data.machineName);
+			sheet.getRange(i + 1, map.operatorId + 1).setValue(data.operatorId);
+			sheet.getRange(i + 1, map.operatorName + 1).setValue(data.operatorName);
+			sheet.getRange(i + 1, map.bags + 1).setValue(data.bags);
+			sheet.getRange(i + 1, map.rounds + 1).setValue(data.rounds);
+			return;
+		}
+	}
+
+	throw new Error('Entry not found.');
+}
+
+/**
+ * Replaces detail rows.
+ */
+function updateDetails(entryId, data) {
+	const sheet = getSheet(SHEETS.DAILY_DETAIL);
+
+	const values = sheet.getDataRange().getValues();
+
+	const headers = values[0];
+
+	const entryCol = headers.indexOf('Entry ID');
+
+	for (let i = values.length - 1; i >= 1; i--) {
+		if (values[i][entryCol] === entryId) {
+			sheet.deleteRow(i + 1);
+		}
+	}
+
+	writeDetails(entryId, data);
+}
+
+function deleteProduction(entryId) {
+	const lock = LockService.getDocumentLock();
+
+	lock.waitLock(30000);
+
+	try {
+		const ss = SpreadsheetApp.getActive();
+
+		const headerSheet = getSheet(SHEETS.DAILY_HEADER);
+		const detailsSheet = getSheet(SHEETS.DAILY_DETAIL);
+
+		const headerData = headerSheet.getDataRange().getValues();
+
+		for (let i = headerData.length - 1; i >= 1; i--) {
+			if (headerData[i][0] === entryId) {
+				headerSheet.deleteRow(i + 1);
+				break;
+			}
+		}
+
+		const detailData = detailsSheet.getDataRange().getValues();
+
+		for (let i = detailData.length - 1; i >= 1; i--) {
+			if (detailData[i][0] === entryId) {
+				detailsSheet.deleteRow(i + 1);
+			}
+		}
+
+		return JSON.parse(
+			JSON.stringify({
+				success: true,
+			}),
+		);
+	} finally {
+		lock.releaseLock();
+	}
+}
+
 function testSubmitProduction() {
 	const data = {
 		date: '2026-07-15',

@@ -1,4 +1,57 @@
 <div id="production-page" class="page">
+	<!-- ===================================================== -->
+	<!-- Search Production -->
+	<!-- ===================================================== -->
+
+	<div id="productionSearchSection" class="section">
+		<div class="section-title">Search Production</div>
+
+		<div class="section">
+			<label>Entry ID</label>
+			<input type="text" id="searchEntryId" />
+		</div>
+
+		<div class="section">
+			<label>Date</label>
+			<input type="date" id="searchDate" />
+		</div>
+
+		<div class="section">
+			<label>Machine</label>
+
+			<select id="searchMachine">
+				<option value="">All Machines</option>
+			</select>
+		</div>
+
+		<div class="section">
+			<label>Operator</label>
+
+			<select id="searchOperator">
+				<option value="">All Operators</option>
+			</select>
+		</div>
+
+		<div class="button-container">
+			<button id="searchProductionBtn" class="primary-btn">Search</button>
+
+			<button id="clearSearchBtn" class="secondary-btn">Clear</button>
+		</div>
+	</div>
+
+	<hr />
+
+	<!-- ===================================================== -->
+	<!-- Search Results -->
+	<!-- ===================================================== -->
+
+	<div id="searchResultsSection" class="section">
+		<div class="section-title">Search Results</div>
+
+		<div id="searchResultsContainer">No records searched.</div>
+	</div>
+
+	<hr />
 	<div class="section">
 		<label>Date</label>
 		<input type="date" id="prodDate" />
