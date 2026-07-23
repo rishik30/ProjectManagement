@@ -102,7 +102,7 @@ function buildFilterSection(sheet) {
 
 	const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 
-	sheet.getRange('B3').setValue('Current Month');
+	sheet.getRange('B3').setValue(DASHBOARD.DATE_RANGES[2]);
 
 	sheet.getRange('B4').setValue(firstDay);
 

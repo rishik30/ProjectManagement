@@ -197,18 +197,26 @@ function calculateKPIs(dataset) {
 		highestProductionPieces: 0,
 		lowestProductionDate: null,
 		lowestProductionPieces: 0,
+		avgPiecesPerDay: 0,
 	};
 
 	const machineSet = new Set();
+	const productionDays = new Set();
 
 	transactions.forEach((txn) => {
 		kpi.totalPieces += txn.pieces;
 		kpi.totalBags += txn.bags;
 		kpi.totalRounds += txn.rounds;
 		machineSet.add(txn.machineId);
+		productionDays.add(normalizeDate(txn.date));
 	});
 
 	kpi.activeMachines = machineSet.size;
+
+	kpi.avgPiecesPerDay =
+		productionDays.size === 0
+			? 0
+			: Math.round(kpi.totalPieces / productionDays.size);
 
 	if (kpi.totalBags > 0) {
 		kpi.avgPiecesPerBag = kpi.totalPieces / kpi.totalBags;

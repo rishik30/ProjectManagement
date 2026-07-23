@@ -117,6 +117,12 @@ const DASHBOARD = {
 			cell: 'I13',
 			decimals: 0,
 		},
+		{
+			key: 'avgPiecesPerDay',
+			title: 'Average Pieces per Day',
+			cell: 'G17',
+			decimals: 2,
+		},
 	],
 	SUMMARY_TABLES: {
 		PRODUCT: {
