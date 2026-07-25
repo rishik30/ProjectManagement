@@ -14,6 +14,10 @@ function onOpen() {
 
 		.addSeparator()
 
+		.addItem('Customer Master', 'showCustomerSidebar')
+
+		.addSeparator()
+
 		.addItem('Product Report', 'generateProductReport')
 
 		.addItem('Machine Report', 'generateMachineReport')
@@ -62,4 +66,15 @@ function generateReport() {
 
 function aboutSystem() {
 	SpreadsheetApp.getUi().alert(APP_NAME + '\n\nVersion : 1.0');
+}
+
+/**
+ * Opens Customer Master Sidebar
+ */
+function showCustomerSidebar() {
+	const html = HtmlService.createTemplateFromFile('CustomerSidebar')
+		.evaluate()
+		.setTitle('Customer Master');
+
+	SpreadsheetApp.getUi().showSidebar(html);
 }

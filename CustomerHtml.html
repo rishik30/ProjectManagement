@@ -1,0 +1,115 @@
+<div id="customer-page" class="page">
+	<!-- ====================================== -->
+	<!-- Search -->
+	<!-- ====================================== -->
+
+	<div class="section">
+		<div class="section-title">Search Customers</div>
+
+		<div class="section">
+			<label>Search</label>
+
+			<input
+				id="customerSearchText"
+				type="text"
+				placeholder="Customer ID / Name / Contact / Mobile / GSTIN"
+			/>
+		</div>
+
+		<div class="section">
+			<label>Status</label>
+
+			<select id="customerStatus">
+				<option>All</option>
+
+				<option>Active</option>
+
+				<option>Inactive</option>
+			</select>
+		</div>
+
+		<div class="button-container">
+			<button id="searchCustomerBtn" class="primary-btn">Search</button>
+
+			<button id="clearCustomerSearchBtn" class="secondary-btn">Clear</button>
+		</div>
+	</div>
+
+	<hr />
+
+	<!-- ====================================== -->
+	<!-- Results -->
+	<!-- ====================================== -->
+
+	<div class="section">
+		<div class="section-title">Search Results</div>
+
+		<div id="customerResults">No records searched.</div>
+	</div>
+
+	<hr />
+
+	<!-- ====================================== -->
+	<!-- Form -->
+	<!-- ====================================== -->
+
+	<div class="section">
+		<label> Customer Name </label>
+
+		<input id="customerName" type="text" />
+	</div>
+
+	<div class="section">
+		<label> Contact Person </label>
+
+		<input id="customerContact" type="text" />
+	</div>
+
+	<div class="section">
+		<label> Mobile </label>
+
+		<input id="customerMobile" type="text" />
+	</div>
+
+	<div class="section">
+		<label> Email </label>
+
+		<input id="customerEmail" type="email" />
+	</div>
+
+	<div class="section">
+		<label> GSTIN </label>
+
+		<input id="customerGSTIN" type="text" />
+	</div>
+
+	<div class="section">
+		<label> Address </label>
+
+		<textarea id="customerAddress" rows="3"></textarea>
+	</div>
+
+	<div class="section">
+		<label> City </label>
+
+		<input id="customerCity" type="text" />
+	</div>
+
+	<div class="section">
+		<label> State </label>
+
+		<input id="customerState" type="text" />
+	</div>
+
+	<div class="section">
+		<label> Pincode </label>
+
+		<input id="customerPincode" type="text" />
+	</div>
+
+	<div class="button-container">
+		<button id="saveCustomerBtn" class="primary-btn">Save</button>
+
+		<button id="resetCustomerBtn" class="secondary-btn">Reset</button>
+	</div>
+</div>

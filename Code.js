@@ -15,6 +15,7 @@ const SHEETS = {
 	USERS: 'Users',
 	PRODUCT_MASTER: 'Product_Master',
 	MACHINE_MASTER: 'Machine_Master',
+	CUSTOMER_MASTER: 'Customer_Master',
 	MACHINE_CONFIGURATION: 'Machine_Configuration',
 
 	MACHINE_HISTORY: '_Machine_Item_History',

@@ -1,0 +1,273 @@
+<script>
+	let editingCustomer = false;
+
+	let editingCustomerId = '';
+
+	document.addEventListener('DOMContentLoaded', initializeCustomerModule);
+
+	function initializeCustomerModule() {
+		initializeCustomerEvents();
+	}
+
+	function initializeCustomerEvents() {
+		document
+			.getElementById('searchCustomerBtn')
+			.addEventListener('click', searchCustomersUI);
+
+		document
+			.getElementById('clearCustomerSearchBtn')
+			.addEventListener('click', clearCustomerSearch);
+
+		document
+			.getElementById('saveCustomerBtn')
+			.addEventListener('click', saveCustomer);
+
+		document
+			.getElementById('resetCustomerBtn')
+			.addEventListener('click', resetCustomerForm);
+	}
+
+	function buildCustomerObject() {
+		return {
+			name: document.getElementById('customerName').value.trim(),
+
+			contactPerson: document.getElementById('customerContact').value.trim(),
+
+			mobile: document.getElementById('customerMobile').value.trim(),
+
+			email: document.getElementById('customerEmail').value.trim(),
+
+			gstin: document.getElementById('customerGSTIN').value.trim(),
+
+			address: document.getElementById('customerAddress').value.trim(),
+
+			city: document.getElementById('customerCity').value.trim(),
+
+			state: document.getElementById('customerState').value.trim(),
+
+			pincode: document.getElementById('customerPincode').value.trim(),
+		};
+	}
+
+	function saveCustomer() {
+		const customer = buildCustomerObject();
+
+		if (editingCustomer) {
+			google.script.run
+
+				.withSuccessHandler(function () {
+					alert('Customer updated successfully.');
+
+					resetCustomerForm();
+				})
+
+				.withFailureHandler(function (err) {
+					alert(err.message);
+				})
+
+				.updateCustomer(editingCustomerId, customer);
+
+			return;
+		}
+
+		google.script.run
+
+			.withSuccessHandler(function () {
+				alert('Customer added successfully.');
+
+				resetCustomerForm();
+			})
+
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+
+			.addCustomer(customer);
+	}
+
+	function searchCustomersUI() {
+		const searchText = document.getElementById('customerSearchText').value;
+
+		const status = document.getElementById('customerStatus').value;
+
+		google.script.run
+
+			.withSuccessHandler(renderCustomerResults)
+
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+
+			.searchCustomers(searchText, status);
+	}
+
+	function renderCustomerResults(customers) {
+		const container = document.getElementById('customerResults');
+
+		if (customers.length === 0) {
+			container.innerHTML = "<div class='empty'>No matching records.</div>";
+
+			return;
+		}
+
+		let html = `
+
+<table class="search-table">
+
+<thead>
+
+<tr>
+
+<th>ID</th>
+
+<th>Name</th>
+
+<th>Mobile</th>
+
+<th>Status</th>
+
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+`;
+
+		customers.forEach(function (customer) {
+			html += `
+
+<tr>
+
+<td>${customer.id}</td>
+
+<td>${customer.name}</td>
+
+<td>${customer.mobile}</td>
+
+<td>${customer.status}</td>
+
+<td>
+
+<button
+class="primary-btn"
+onclick="editCustomer('${customer.id}')">
+
+Edit
+
+</button>
+
+<button
+class="secondary-btn"
+onclick="toggleCustomer('${customer.id}')">
+
+${customer.status === 'Active' ? 'Deactivate' : 'Activate'}
+
+</button>
+
+</td>
+
+</tr>
+
+`;
+		});
+
+		html += '</tbody></table>';
+
+		container.innerHTML = html;
+	}
+
+	function editCustomer(customerId) {
+		google.script.run
+
+			.withSuccessHandler(loadCustomer)
+
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+
+			.getCustomer(customerId);
+	}
+
+	function loadCustomer(customer) {
+		editingCustomer = true;
+
+		editingCustomerId = customer.id;
+
+		document.getElementById('customerName').value = customer.name;
+
+		document.getElementById('customerContact').value = customer.contactPerson;
+
+		document.getElementById('customerMobile').value = customer.mobile;
+
+		document.getElementById('customerEmail').value = customer.email;
+
+		document.getElementById('customerGSTIN').value = customer.gstin;
+
+		document.getElementById('customerAddress').value = customer.address;
+
+		document.getElementById('customerCity').value = customer.city;
+
+		document.getElementById('customerState').value = customer.state;
+
+		document.getElementById('customerPincode').value = customer.pincode;
+
+		document.getElementById('saveCustomerBtn').textContent = 'Update';
+
+		document.getElementById('customer-page').scrollIntoView({
+			behavior: 'smooth',
+			block: 'start',
+		});
+	}
+
+	function toggleCustomer(customerId) {
+		google.script.run
+
+			.withSuccessHandler(function () {
+				searchCustomersUI();
+			})
+
+			.withFailureHandler(function (err) {
+				alert(err.message);
+			})
+
+			.toggleCustomerStatus(customerId);
+	}
+
+	function resetCustomerForm() {
+		editingCustomer = false;
+
+		editingCustomerId = '';
+
+		document.getElementById('customerName').value = '';
+
+		document.getElementById('customerContact').value = '';
+
+		document.getElementById('customerMobile').value = '';
+
+		document.getElementById('customerEmail').value = '';
+
+		document.getElementById('customerGSTIN').value = '';
+
+		document.getElementById('customerAddress').value = '';
+
+		document.getElementById('customerCity').value = '';
+
+		document.getElementById('customerState').value = '';
+
+		document.getElementById('customerPincode').value = '';
+
+		document.getElementById('saveCustomerBtn').textContent = 'Save';
+	}
+
+	function clearCustomerSearch() {
+		document.getElementById('customerSearchText').value = '';
+
+		document.getElementById('customerStatus').selectedIndex = 0;
+
+		document.getElementById('customerResults').innerHTML =
+			'No records searched.';
+	}
+</script>
