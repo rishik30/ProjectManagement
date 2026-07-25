@@ -25,6 +25,8 @@ const SHEETS = {
 	DASHBOARD: 'Dashboard',
 	VALIDATION: 'Validation',
 	REPORT: 'Report',
+	STOCK_LEDGER: 'StockLedger',
+	CURRENT_STOCK: 'CurrentStock',
 };
 
 const SIDEBAR = {

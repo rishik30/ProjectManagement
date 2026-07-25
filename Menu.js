@@ -33,6 +33,9 @@ function onOpen() {
 		.addItem('About', 'aboutSystem')
 
 		.addToUi();
+
+	// Initialize Inventory Engine
+	initializeInventory();
 }
 
 function openProductionSidebar() {

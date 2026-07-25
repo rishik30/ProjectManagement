@@ -347,6 +347,14 @@ function submitProduction(data) {
 
 			writeDetails(entryId, data);
 
+			// Build Inventory Data
+			const inventory = buildProductionInventoryData(entryId, data);
+
+			// Post Inventory
+			appendLedgerRows(inventory.ledgerRows);
+
+			updateCurrentStockBatch(inventory.stockChanges);
+
 			return {
 				success: true,
 				duplicate: false,
@@ -372,8 +380,17 @@ function updateProduction(entryId, data) {
 		lock.waitLock(20000);
 
 		try {
+			// Update Production
 			updateHeader(entryId, data);
 			updateDetails(entryId, data);
+
+			// Reverse previous inventory posting
+			reverseTransaction(entryId, 'Production Updated');
+
+			// Post updated inventory
+			const inventory = buildProductionInventoryData(entryId, data);
+			appendLedgerRows(inventory.ledgerRows);
+			updateCurrentStockBatch(inventory.stockChanges);
 
 			return {
 				success: true,
@@ -453,6 +470,9 @@ function deleteProduction(entryId) {
 
 		const headerSheet = getSheet(SHEETS.DAILY_HEADER);
 		const detailsSheet = getSheet(SHEETS.DAILY_DETAIL);
+
+		// Reverse inventory posting
+		reverseTransaction(entryId, 'Production Deleted');
 
 		const headerData = headerSheet.getDataRange().getValues();
 

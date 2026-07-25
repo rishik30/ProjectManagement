@@ -197,3 +197,25 @@ function validateSystem() {
 
 	SpreadsheetApp.getUi().alert(message);
 }
+
+function createSheetIfMissing(sheetName, headers) {
+	const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+	let sheet = ss.getSheetByName(sheetName);
+
+	if (sheet) return sheet;
+
+	sheet = ss.insertSheet(sheetName);
+
+	sheet
+		.getRange(1, 1, 1, headers.length)
+		.setValues([headers])
+		.setFontWeight('bold')
+		.setBackground('#d9ead3')
+		.setHorizontalAlignment('center');
+
+	sheet.setFrozenRows(1);
+	sheet.autoResizeColumns(1, headers.length);
+
+	return sheet;
+}
