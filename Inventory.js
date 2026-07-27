@@ -90,78 +90,104 @@ function reverseTransaction(referenceId, remarks = 'Transaction Reversed') {
 		throw new Error('Reference ID is required.');
 	}
 
-	const sheet = getSheet(SHEETS.STOCK_LEDGER);
-	const values = sheet.getDataRange().getValues();
+	try {
+		const sheet = getSheet(SHEETS.STOCK_LEDGER);
+		const values = sheet.getDataRange().getValues();
 
-	if (values.length <= 1) return;
+		if (values.length <= 1) return;
 
-	const reversalRows = [];
-	const stockChanges = [];
-	const rowsToUpdate = [];
+		const reversalRows = [];
+		const stockChanges = [];
+		const rowsToUpdate = [];
 
-	const today = new Date();
+		const today = new Date();
 
-	for (let i = 1; i < values.length; i++) {
-		const row = values[i];
+		for (let i = 1; i < values.length; i++) {
+			const row = values[i];
 
-		if (row[3] !== referenceId) continue;
+			if (row[3] !== referenceId) continue;
+			if (row[8] !== 'Active') continue;
 
-		if (row[8] !== 'Active') continue;
+			const transactionType = row[2];
 
-		const transactionType = row[2];
-		if (transactionType.endsWith('Reversal')) {
-			continue;
+			if (transactionType.endsWith('Reversal')) {
+				continue;
+			}
+
+			const productId = row[4];
+			const productName = row[5];
+			const qtyIn = Number(row[6] || 0);
+			const qtyOut = Number(row[7] || 0);
+
+			reversalRows.push({
+				date: today,
+				transactionType: `${transactionType} Reversal`,
+				referenceId,
+				productId,
+				productName,
+				qtyIn: qtyOut,
+				qtyOut: qtyIn,
+				status: 'Active',
+				remarks,
+			});
+
+			stockChanges.push({
+				productId,
+				productName,
+				quantity: qtyOut - qtyIn,
+			});
+
+			rowsToUpdate.push(i + 1);
 		}
-		const productId = row[4];
-		const productName = row[5];
-		const qtyIn = Number(row[6] || 0);
-		const qtyOut = Number(row[7] || 0);
 
-		reversalRows.push({
-			date: today,
-			transactionType: `${transactionType} Reversal`,
+		if (reversalRows.length === 0) {
+			throw new Error('No active inventory transaction found.');
+		}
+
+		// Build stock batch
+
+		const batch = {};
+
+		stockChanges.forEach((item) => {
+			if (!batch[item.productId]) {
+				batch[item.productId] = {
+					productName: item.productName,
+					quantity: 0,
+				};
+			}
+
+			batch[item.productId].quantity += item.quantity;
+		});
+
+		// Transactional posting
+
+		try {
+			appendLedgerRows(reversalRows);
+
+			updateCurrentStockBatch(batch);
+
+			rowsToUpdate.forEach((rowNumber) => {
+				sheet.getRange(rowNumber, 9).setValue('Cancelled');
+			});
+
+			return true;
+		} catch (error) {
+			// Undo stock update if it already happened
+			rollbackStockChanges(batch);
+
+			// Remove reversal ledger rows
+			rollbackReverseTransaction(referenceId);
+
+			throw error;
+		}
+	} catch (error) {
+		logError('reverseTransaction', error, {
 			referenceId,
-			productId,
-			productName,
-			qtyIn: qtyOut,
-			qtyOut: qtyIn,
-			status: 'Active',
 			remarks,
 		});
 
-		stockChanges.push({
-			productId,
-			productName,
-			quantity: qtyOut - qtyIn,
-		});
-
-		rowsToUpdate.push(i + 1);
+		throw error;
 	}
-
-	if (reversalRows.length === 0) {
-		throw new Error('No active inventory transaction found.');
-	}
-
-	appendLedgerRows(reversalRows);
-
-	const batch = {};
-
-	stockChanges.forEach((item) => {
-		if (!batch[item.productId]) {
-			batch[item.productId] = {
-				productName: item.productName,
-				quantity: 0,
-			};
-		}
-
-		batch[item.productId].quantity += item.quantity;
-	});
-
-	updateCurrentStockBatch(batch);
-
-	rowsToUpdate.forEach((rowNumber) => {
-		sheet.getRange(rowNumber, 9).setValue('Cancelled');
-	});
 }
 
 function getCurrentStock(productName) {
@@ -403,6 +429,75 @@ function generateLedgerId(transactionDate, sequence) {
 	);
 
 	return `LED-${datePart}-${String(sequence).padStart(4, '0')}`;
+}
+
+/**
+ * Returns current stock indexed by Product ID.
+ */
+function getCurrentStockMap() {
+	try {
+		const sheet = getSheet(SHEETS.CURRENT_STOCK);
+
+		const data = sheet.getDataRange().getValues();
+
+		const stock = {};
+
+		for (let i = 1; i < data.length; i++) {
+			stock[data[i][0]] = Number(data[i][2] || 0);
+		}
+
+		return stock;
+	} catch (error) {
+		logError('getCurrentStockMap', error);
+
+		throw error;
+	}
+}
+
+/**
+ * Removes reversal ledger rows for a transaction.
+ *
+ * @param {String} referenceId
+ */
+function rollbackReverseTransaction(referenceId) {
+	try {
+		const sheet = getSheet(SHEETS.STOCK_LEDGER);
+
+		const data = sheet.getDataRange().getValues();
+
+		for (let i = data.length - 1; i >= 1; i--) {
+			const transactionType = String(data[i][2]);
+
+			if (data[i][3] === referenceId && transactionType.endsWith('Reversal')) {
+				sheet.deleteRow(i + 1);
+			}
+		}
+	} catch (error) {
+		logError('rollbackReverseTransaction', error, referenceId);
+	}
+}
+
+/**
+ * Reverts stock changes.
+ *
+ * @param {Object} stockChanges
+ */
+function rollbackStockChanges(stockChanges) {
+	try {
+		const reverseChanges = {};
+
+		Object.keys(stockChanges).forEach((productId) => {
+			reverseChanges[productId] = {
+				productName: stockChanges[productId].productName,
+
+				quantity: -stockChanges[productId].quantity,
+			};
+		});
+
+		updateCurrentStockBatch(reverseChanges);
+	} catch (error) {
+		logError('rollbackStockChanges', error, stockChanges);
+	}
 }
 
 /**

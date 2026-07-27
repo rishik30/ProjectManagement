@@ -1,0 +1,560 @@
+<script>
+	let customers = [];
+	let products = [];
+
+	let editingSalesId = '';
+
+	document.addEventListener('DOMContentLoaded', initializeSalesForm);
+
+	/**
+	 * -----------------------------------------------------------
+	 * Initial Load
+	 * -----------------------------------------------------------
+	 */
+	function initializeSalesForm() {
+		document.getElementById('salesDate').valueAsDate = new Date();
+
+		loadMasters();
+
+		initializeSearch();
+
+		document
+			.getElementById('btnAddProduct')
+			.addEventListener('click', addProductCard);
+
+		document.getElementById('btnSaveSale').addEventListener('click', saveSale);
+
+		document
+			.getElementById('btnClearSale')
+			.addEventListener('click', clearSalesForm);
+
+		document
+			.getElementById('btnCancelSaleEdit')
+			.addEventListener('click', cancelEdit);
+	}
+
+	function loadMasters() {
+		console.log('Loading masters...');
+		google.script.run.withSuccessHandler(populateMasters).getSalesFormData();
+	}
+
+	function populateMasters(data) {
+		console.log('Sales Form Data:', data);
+
+		customers = data.customers;
+		products = data.products;
+
+		console.log('Customers:', customers.length);
+		console.log('Products:', products.length);
+
+		populateCustomerDropdown();
+	}
+
+	function populateCustomerDropdown() {
+		const customerDropdown = document.getElementById('customerSelect');
+
+		const searchDropdown = document.getElementById('searchCustomer');
+
+		customerDropdown.innerHTML = '<option value="">Select Customer</option>';
+
+		searchDropdown.innerHTML = '<option value="">All Customers</option>';
+
+		customers.forEach((customer) => {
+			const option1 = document.createElement('option');
+
+			option1.value = customer.id;
+			option1.textContent = customer.name;
+
+			customerDropdown.appendChild(option1);
+
+			const option2 = option1.cloneNode(true);
+
+			searchDropdown.appendChild(option2);
+		});
+	}
+
+	function addProductCard(product = {}) {
+		const container = document.getElementById('salesProductsContainer');
+
+		const empty = container.querySelector('.empty');
+
+		if (empty) {
+			container.innerHTML = '';
+		}
+
+		const cards = container.querySelectorAll('.product-card');
+
+		for (const card of cards) {
+			if (!card.querySelector('.productSelect').value) {
+				alert('Please select the product before adding another product.');
+				return;
+			}
+		}
+
+		container.appendChild(createProductCard(product));
+
+		updateCardNumbers();
+	}
+
+	function createProductCard(product = {}) {
+		const card = document.createElement('div');
+
+		card.className = 'product-card';
+
+		card.innerHTML = `
+		<div class="product-card-header">
+
+			<div class="product-card-title">
+				Product
+			</div>
+
+			<button
+				type="button"
+				class="remove-product-btn">
+
+				Remove
+
+			</button>
+
+		</div>
+
+		<div class="section">
+			<label>Product</label>
+
+			<select class="productSelect"></select>
+		</div>
+
+		<div class="section">
+			<label>Unit</label>
+
+			${createUnitDropdown(product.unit || '')}
+		</div>
+
+		<div class="section">
+			<label>Quantity</label>
+
+			<input
+				type="number"
+				min="1"
+				class="qtyInput"
+				value="${product.quantity || ''}">
+		</div>
+
+		<div class="section">
+			<label>Pieces</label>
+
+			<input
+				type="number"
+				class="piecesInput"
+				readonly
+				value="${product.pieces || ''}">
+		</div>
+	`;
+
+		populateProductDropdown(
+			card.querySelector('.productSelect'),
+			product.productId || '',
+		);
+
+		registerCardEvents(card);
+
+		return card;
+	}
+
+	function createUnitDropdown(selectedUnit = '') {
+		const units = ['Piece', 'Packet', 'Box'];
+
+		return `
+		<select class="unitSelect">
+
+			${units
+				.map(
+					(unit) => `
+				<option
+					value="${unit}"
+					${unit === selectedUnit ? 'selected' : ''}>
+
+					${unit}
+
+				</option>
+			`,
+				)
+				.join('')}
+
+		</select>
+	`;
+	}
+
+	function registerCardEvents(card) {
+		card
+			.querySelector('.remove-product-btn')
+			.addEventListener('click', function () {
+				card.remove();
+
+				const container = document.getElementById('salesProductsContainer');
+
+				if (container.querySelectorAll('.product-card').length === 0) {
+					container.innerHTML = `
+					<div class="empty">
+						No products added.
+					</div>
+				`;
+				} else {
+					updateCardNumbers();
+				}
+			});
+
+		card
+			.querySelector('.productSelect')
+			.addEventListener('change', () => calculatePieces(card));
+
+		card
+			.querySelector('.unitSelect')
+			.addEventListener('change', () => calculatePieces(card));
+
+		card
+			.querySelector('.qtyInput')
+			.addEventListener('input', () => calculatePieces(card));
+	}
+
+	function updateCardNumbers() {
+		document.querySelectorAll('.product-card').forEach((card, index) => {
+			card.querySelector('.product-card-title').textContent =
+				`Product ${index + 1}`;
+		});
+	}
+
+	function populateProductDropdown(dropdown, selectedId = '') {
+		console.log('Products available:', products);
+		dropdown.innerHTML = '<option value="">Select Product</option>';
+
+		products.forEach((product) => {
+			const option = document.createElement('option');
+
+			option.value = product.id;
+
+			option.textContent = product.name;
+
+			if (product.id === selectedId) {
+				option.selected = true;
+			}
+
+			dropdown.appendChild(option);
+		});
+	}
+
+	function calculatePieces(card) {
+		const productId = card.querySelector('.productSelect').value;
+		const unit = card.querySelector('.unitSelect').value;
+		const quantity = Number(card.querySelector('.qtyInput').value) || 0;
+
+		const piecesInput = card.querySelector('.piecesInput');
+
+		if (!productId || quantity <= 0) {
+			piecesInput.value = '';
+			return;
+		}
+
+		const product = products.find((p) => p.id === productId);
+
+		if (!product) {
+			piecesInput.value = '';
+			return;
+		}
+
+		let pieces = 0;
+
+		switch (unit) {
+			case 'Piece':
+				pieces = quantity;
+				break;
+
+			case 'Packet':
+				pieces = quantity * Number(product.piecesPerPacket);
+				break;
+
+			case 'Box':
+				pieces =
+					quantity *
+					Number(product.packetsPerBox) *
+					Number(product.piecesPerPacket);
+				break;
+
+			default:
+				pieces = quantity;
+		}
+
+		piecesInput.value = pieces;
+	}
+
+	function collectSaleData() {
+		const sale = {
+			date: document.getElementById('salesDate').value,
+
+			customerId: document.getElementById('customerSelect').value,
+
+			customerName:
+				document.getElementById('customerSelect').selectedOptions[0]?.text ||
+				'',
+
+			remarks: document.getElementById('salesRemarks').value.trim(),
+
+			products: [],
+		};
+
+		document.querySelectorAll('.product-card').forEach((card) => {
+			if (card.querySelector('.empty')) return;
+
+			const productId = card.querySelector('.productSelect').value;
+
+			if (!productId) return;
+
+			sale.products.push({
+				productId,
+
+				productName:
+					card.querySelector('.productSelect').selectedOptions[0].text,
+
+				unit: card.querySelector('.unitSelect').value,
+
+				quantity: Number(card.querySelector('.qtyInput').value),
+
+				pieces: Number(card.querySelector('.piecesInput').value),
+			});
+		});
+
+		return sale;
+	}
+
+	function saveSale() {
+		const btn = document.getElementById('btnSaveSale');
+		btn.disabled = true;
+
+		const sale = collectSaleData();
+
+		const mode = document.getElementById('salesMode').value;
+
+		if (mode === 'ADD') {
+			google.script.run
+
+				.withSuccessHandler(onSaveSuccess)
+
+				.withFailureHandler(showError)
+
+				.addSale(sale);
+		} else {
+			google.script.run
+
+				.withSuccessHandler(onSaveSuccess)
+
+				.withFailureHandler(showError)
+
+				.updateSale(document.getElementById('editingSalesId').value, sale);
+		}
+	}
+
+	function onSaveSuccess(result) {
+		const btn = document.getElementById('btnSaveSale');
+		btn.disabled = false;
+
+		alert('Sale saved successfully.\n\nSales ID : ' + result.salesId);
+
+		clearSalesForm();
+	}
+
+	function clearSalesForm() {
+		document.getElementById('salesMode').value = 'ADD';
+
+		document.getElementById('editingSalesId').value = '';
+
+		document.getElementById('salesDate').valueAsDate = new Date();
+
+		document.getElementById('customerSelect').selectedIndex = 0;
+
+		document.getElementById('salesRemarks').value = '';
+
+		document.getElementById('salesProductsContainer').innerHTML = `
+			<div class="empty">
+				No products added.
+			</div>`;
+
+		document.getElementById('btnSaveSale').textContent = 'Save';
+
+		document.getElementById('btnCancelSaleEdit').style.display = 'none';
+
+		document.getElementById('salesMode').value = 'ADD';
+
+		document.getElementById('editingSalesId').value = '';
+
+		document.getElementById('btnSaveSale').textContent = 'Save';
+	}
+
+	function cancelEdit() {
+		clearSalesForm();
+	}
+
+	function showError(error) {
+		const btn = document.getElementById('btnSaveSale');
+		btn.disabled = false;
+		alert(error.message || error);
+	}
+
+	function initializeSearch() {
+		document
+			.getElementById('searchSalesBtn')
+			.addEventListener('click', searchSales);
+
+		document
+			.getElementById('clearSalesSearchBtn')
+			.addEventListener('click', clearSearch);
+	}
+
+	function clearSearch() {
+		document.getElementById('searchSalesId').value = '';
+
+		document.getElementById('searchCustomer').selectedIndex = 0;
+
+		document.getElementById('searchFromDate').value = '';
+
+		document.getElementById('searchToDate').value = '';
+
+		document.getElementById('salesSearchContainer').innerHTML =
+			'No records searched.';
+	}
+
+	function searchSales() {
+		const searchText = document.getElementById('searchSalesId').value.trim();
+
+		google.script.run
+			.withSuccessHandler(renderSearchResults)
+			.withFailureHandler(showError)
+			.searchSales(searchText);
+	}
+
+	function renderSearchResults(results) {
+		console.log('Search Results:', results);
+		const container = document.getElementById('salesSearchContainer');
+
+		if (!results || results.length === 0) {
+			container.innerHTML = '<p>No records found.</p>';
+
+			return;
+		}
+
+		let html = `
+
+    <table class="data-table">
+
+        <thead>
+
+            <tr>
+
+                <th>Sales ID</th>
+
+                <th>Date</th>
+
+                <th>Customer</th>
+
+                <th>Remarks</th>
+
+                <th>Actions</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+    `;
+
+		results.forEach((sale) => {
+			html += `
+
+        <tr>
+
+            <td>${sale.id}</td>
+
+            <td>${sale.date}</td>
+
+            <td>${sale.customerName}</td>
+
+            <td>${sale.remarks || ''}</td>
+
+            <td>
+
+                <button
+                    onclick="loadSaleForEdit('${sale.id}')">
+                    Edit
+                </button>
+
+                <button
+                    onclick="deleteSaleRecord('${sale.id}')">
+                    Delete
+                </button>
+
+            </td>
+
+        </tr>
+
+        `;
+		});
+
+		html += '</tbody></table>';
+
+		container.innerHTML = html;
+	}
+
+	function loadSaleForEdit(salesId) {
+		google.script.run
+			.withSuccessHandler(populateSale)
+			.withFailureHandler(showError)
+			.getSale(salesId);
+	}
+
+	function populateSale(sale) {
+		document.getElementById('salesMode').value = 'EDIT';
+
+		document.getElementById('editingSalesId').value = sale.id;
+
+		document.getElementById('salesDate').value = sale.date;
+
+		document.getElementById('customerSelect').value = sale.customerId;
+
+		document.getElementById('salesRemarks').value = sale.remarks || '';
+
+		const container = document.getElementById('salesProductsContainer');
+
+		container.innerHTML = '';
+
+		sale.products.forEach((product) => {
+			addProductCard(product);
+		});
+
+		document.getElementById('btnSaveSale').textContent = 'Update';
+
+		document.getElementById('btnCancelSaleEdit').style.display = '';
+
+		window.scrollTo({
+			top: document.getElementById('sales-page').offsetTop,
+
+			behavior: 'smooth',
+		});
+	}
+
+	function deleteSaleRecord(salesId) {
+		if (!confirm('Delete this sale?')) {
+			return;
+		}
+
+		google.script.run
+
+			.withSuccessHandler(function () {
+				alert('Sales deleted successfully.');
+				searchSales();
+			})
+
+			.withFailureHandler(showError)
+
+			.deleteSale(salesId);
+	}
+</script>

@@ -12,6 +12,8 @@ function onOpen() {
 
 		.addItem('Machine Setup', 'openMachineSetupSidebar')
 
+		.addItem('Sales', 'showSalesSidebar')
+
 		.addSeparator()
 
 		.addItem('Customer Master', 'showCustomerSidebar')
@@ -75,6 +77,17 @@ function showCustomerSidebar() {
 	const html = HtmlService.createTemplateFromFile('CustomerSidebar')
 		.evaluate()
 		.setTitle('Customer Master');
+
+	SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Opens Sales Sidebar
+ */
+function showSalesSidebar() {
+	const html = HtmlService.createTemplateFromFile('SalesSidebar')
+		.evaluate()
+		.setTitle('Sales');
 
 	SpreadsheetApp.getUi().showSidebar(html);
 }

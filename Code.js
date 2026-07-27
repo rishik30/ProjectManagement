@@ -21,6 +21,8 @@ const SHEETS = {
 	MACHINE_HISTORY: '_Machine_Item_History',
 	DAILY_HEADER: '_Daily_Production_Header',
 	DAILY_DETAIL: '_Daily_Production_Detail',
+	SALES_HEADER: 'Sales_Header',
+	SALES_DETAILS: 'Sales_Details',
 
 	MACHINE_REPORT: 'Machine_Report',
 	DASHBOARD: 'Dashboard',

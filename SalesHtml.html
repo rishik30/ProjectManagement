@@ -1,0 +1,111 @@
+<div id="sales-page" class="page">
+	<!-- ============================================== -->
+	<!-- Search Sales -->
+	<!-- ============================================== -->
+
+	<div id="salesSearchSection" class="section">
+		<div class="section-title">Search Sales</div>
+
+		<div class="section">
+			<label>Sales ID</label>
+			<input type="text" id="searchSalesId" />
+		</div>
+
+		<div class="section">
+			<label>Customer</label>
+			<select id="searchCustomer">
+				<option value="">All Customers</option>
+			</select>
+		</div>
+
+		<div class="section">
+			<label>Date From</label>
+			<input type="date" id="searchFromDate" />
+		</div>
+
+		<div class="section">
+			<label>Date To</label>
+			<input type="date" id="searchToDate" />
+		</div>
+
+		<div class="button-container">
+			<button id="searchSalesBtn" class="primary-btn">Search</button>
+
+			<button id="clearSalesSearchBtn" class="secondary-btn">Clear</button>
+		</div>
+	</div>
+
+	<hr />
+
+	<!-- ============================================== -->
+	<!-- Search Results -->
+	<!-- ============================================== -->
+
+	<div id="salesSearchResults" class="section">
+		<div class="section-title">Search Results</div>
+
+		<div id="salesSearchContainer">No records searched.</div>
+	</div>
+
+	<hr />
+
+	<!-- ============================================== -->
+	<!-- Sale Entry -->
+	<!-- ============================================== -->
+
+	<input type="hidden" id="salesMode" value="ADD" />
+
+	<input type="hidden" id="editingSalesId" />
+
+	<div class="section">
+		<label>Date</label>
+
+		<input type="date" id="salesDate" />
+	</div>
+
+	<div class="section">
+		<label>Customer</label>
+
+		<select id="customerSelect">
+			<option value="">Select Customer</option>
+		</select>
+	</div>
+
+	<div class="section">
+		<label>Remarks</label>
+
+		<textarea id="salesRemarks" rows="3"></textarea>
+	</div>
+
+	<!-- ============================================== -->
+	<!-- Products -->
+	<!-- ============================================== -->
+
+	<div class="section">
+		<div class="section-title">Products</div>
+
+		<div id="salesProductsContainer">
+			<div class="empty">No products added.</div>
+		</div>
+
+		<div class="button-container" style="margin-top: 10px">
+			<button type="button" id="btnAddProduct" class="secondary-btn">
+				Add Product
+			</button>
+		</div>
+	</div>
+
+	<!-- ============================================== -->
+	<!-- Buttons -->
+	<!-- ============================================== -->
+
+	<div class="button-container">
+		<button id="btnSaveSale" class="primary-btn">Save</button>
+
+		<button id="btnClearSale" class="secondary-btn">Clear</button>
+
+		<button id="btnCancelSaleEdit" class="secondary-btn" style="display: none">
+			Cancel
+		</button>
+	</div>
+</div>
