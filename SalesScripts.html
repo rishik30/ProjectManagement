@@ -17,6 +17,7 @@
 		loadMasters();
 
 		initializeSearch();
+		initializeSearchToggle();
 
 		document
 			.getElementById('btnAddProduct')
@@ -31,6 +32,28 @@
 		document
 			.getElementById('btnCancelSaleEdit')
 			.addEventListener('click', cancelEdit);
+	}
+
+	function initializeSearchToggle() {
+		document
+			.getElementById('toggleSalesSearchBtn')
+			.addEventListener('click', toggleSearchSection);
+	}
+
+	function toggleSearchSection() {
+		const area = document.getElementById('salesSearchArea');
+
+		const button = document.getElementById('toggleSalesSearchBtn');
+
+		const visible = area.style.display !== 'none';
+
+		if (visible) {
+			area.style.display = 'none';
+			button.textContent = 'Search Records ▼';
+		} else {
+			area.style.display = 'block';
+			button.textContent = 'Hide Search ▲';
+		}
 	}
 
 	function loadMasters() {
@@ -326,40 +349,82 @@
 		return sale;
 	}
 
+	function confirmSale(sale) {
+		let message = '';
+		let sumPieces = 0;
+
+		message += 'Please confirm sale\n\n';
+
+		message += 'Date : ' + sale.date + '\n';
+		message += 'Customer : ' + sale.customerName + '\n';
+
+		if (sale.remarks) {
+			message += 'Remarks : ' + sale.remarks + '\n';
+		}
+
+		message += '\nProducts\n';
+		message += '--------------------------\n';
+
+		sale.products.forEach((item) => {
+			sumPieces += item.pieces;
+			message +=
+				item.productName +
+				' - ' +
+				item.quantity +
+				' ' +
+				item.unit +
+				' (' +
+				item.pieces +
+				' pcs)\n';
+		});
+
+		message += '--------------------------\n';
+		message += 'Total Pieces : ' + sumPieces + '\n';
+
+		return confirm(message);
+	}
+
 	function saveSale() {
 		const btn = document.getElementById('btnSaveSale');
-		btn.disabled = true;
+
+		if (btn.disabled) return;
 
 		const sale = collectSaleData();
+
+		if (!confirmSale(sale)) {
+			return;
+		}
+
+		btn.disabled = true;
+		btn.textContent = 'Saving...';
 
 		const mode = document.getElementById('salesMode').value;
 
 		if (mode === 'ADD') {
 			google.script.run
-
 				.withSuccessHandler(onSaveSuccess)
-
 				.withFailureHandler(showError)
-
 				.addSale(sale);
 		} else {
 			google.script.run
-
 				.withSuccessHandler(onSaveSuccess)
-
 				.withFailureHandler(showError)
-
 				.updateSale(document.getElementById('editingSalesId').value, sale);
 		}
 	}
 
 	function onSaveSuccess(result) {
 		const btn = document.getElementById('btnSaveSale');
+
 		btn.disabled = false;
 
-		alert('Sale saved successfully.\n\nSales ID : ' + result.salesId);
+		btn.textContent = 'Save';
+
+		alert('Sale saved successfully.\n\n' + 'Sales ID : ' + result.salesId);
 
 		clearSalesForm();
+
+		searchSales();
 	}
 
 	function clearSalesForm() {
@@ -395,7 +460,11 @@
 
 	function showError(error) {
 		const btn = document.getElementById('btnSaveSale');
+
 		btn.disabled = false;
+
+		btn.textContent = 'Save';
+
 		alert(error.message || error);
 	}
 
@@ -425,9 +494,25 @@
 	function searchSales() {
 		const searchText = document.getElementById('searchSalesId').value.trim();
 
+		const btn = document.getElementById('searchSalesBtn');
+
+		btn.disabled = true;
+
+		btn.textContent = 'Searching...';
+
 		google.script.run
-			.withSuccessHandler(renderSearchResults)
-			.withFailureHandler(showError)
+			.withSuccessHandler(function (results) {
+				btn.disabled = false;
+				btn.textContent = 'Search';
+
+				renderSearchResults(results);
+			})
+			.withFailureHandler(function (err) {
+				btn.disabled = false;
+				btn.textContent = 'Search';
+
+				showError(err);
+			})
 			.searchSales(searchText);
 	}
 
@@ -501,7 +586,11 @@
 
 		html += '</tbody></table>';
 
-		container.innerHTML = html;
+		container.innerHTML = `
+			<div class="search-results-table">
+				${html}
+			</div>
+		`;
 	}
 
 	function loadSaleForEdit(salesId) {

@@ -20,6 +20,7 @@
 
 		loadMasters();
 		initializeSearch();
+		initializeProductionSearchToggle();
 
 		document
 			.getElementById('machineSelect')
@@ -59,6 +60,28 @@
 			showMachineTab();
 		} else {
 			showProductionTab();
+		}
+	}
+
+	function initializeProductionSearchToggle() {
+		document
+			.getElementById('toggleProductionSearchBtn')
+			.addEventListener('click', toggleProductionSearch);
+	}
+
+	function toggleProductionSearch() {
+		const area = document.getElementById('productionSearchArea');
+
+		const button = document.getElementById('toggleProductionSearchBtn');
+
+		const visible = area.style.display !== 'none';
+
+		if (visible) {
+			area.style.display = 'none';
+			button.textContent = 'Search Records ▼';
+		} else {
+			area.style.display = 'block';
+			button.textContent = 'Hide Search ▲';
 		}
 	}
 
@@ -438,6 +461,11 @@
 	}
 
 	function searchProduction() {
+		const btn = document.getElementById('searchProductionBtn');
+
+		btn.disabled = true;
+		btn.textContent = 'Searching...';
+
 		const criteria = {
 			entryId: document.getElementById('searchEntryId').value.trim(),
 			date: document.getElementById('searchDate').value,
@@ -446,8 +474,16 @@
 		};
 
 		google.script.run
-			.withSuccessHandler(renderSearchResults)
+			.withSuccessHandler(function (results) {
+				btn.disabled = false;
+				btn.textContent = 'Search';
+
+				renderSearchResults(results);
+			})
 			.withFailureHandler(function (err) {
+				btn.disabled = false;
+				btn.textContent = 'Search';
+
 				alert(err.message);
 			})
 			.searchProductionEntries(criteria);
@@ -527,7 +563,11 @@
 
 		html += '</tbody></table>';
 
-		container.innerHTML = html;
+		container.innerHTML = `
+			<div class="search-results-table">
+				${html}
+			</div>
+		`;
 	}
 
 	function formatSearchDate(value) {
@@ -708,7 +748,6 @@
 
 		if (machineId === '') {
 			alert('Please select a machine.');
-
 			return;
 		}
 
@@ -721,15 +760,85 @@
 			return;
 		}
 
+		const saveButton = document.getElementById('saveConfigBtn');
+
+		const machine = setupMachines.find((m) => m.id === machineId);
+
+		let message = '';
+
+		message += 'Please confirm machine configuration\n\n';
+
+		message += 'Machine : ' + machine.name + '\n\n';
+
+		if (changeSet.added.length) {
+			message += 'Added Products\n';
+			message += '--------------------------\n';
+
+			changeSet.added.forEach((item) => {
+				const product = setupProducts.find((p) => p.id === item.productId);
+
+				message += `${product.name} (Mould ${item.mould})\n`;
+			});
+
+			message += '\n';
+		}
+
+		if (changeSet.updated.length) {
+			message += 'Updated Products\n';
+			message += '--------------------------\n';
+
+			changeSet.updated.forEach((item) => {
+				const product = setupProducts.find((p) => p.id === item.productId);
+
+				message += `${product.name} (${item.oldMould} → ${item.newMould})\n`;
+			});
+
+			message += '\n';
+		}
+
+		if (changeSet.removed.length) {
+			message += 'Removed Products\n';
+			message += '--------------------------\n';
+
+			changeSet.removed.forEach((item) => {
+				const product = setupProducts.find((p) => p.id === item.productId);
+
+				message += `${product.name}\n`;
+			});
+
+			message += '\n';
+		}
+
+		if (
+			changeSet.added.length === 0 &&
+			changeSet.updated.length === 0 &&
+			changeSet.removed.length === 0
+		) {
+			alert('No changes detected.');
+
+			return;
+		}
+
+		if (!confirm(message)) {
+			return;
+		}
+
+		saveButton.disabled = true;
+		saveButton.textContent = 'Saving...';
+
 		google.script.run
 			.withSuccessHandler(function () {
+				saveButton.disabled = false;
+				saveButton.textContent = 'Save Changes';
+
 				alert('Configuration saved successfully.');
 
-				onSetupMachineChanged.call({
-					value: machineId,
-				});
+				onSetupMachineChanged();
 			})
 			.withFailureHandler(function (err) {
+				saveButton.disabled = false;
+				saveButton.textContent = 'Save Changes';
+
 				alert(err.message);
 			})
 			.saveMachineConfiguration(machineId, changeSet);
@@ -797,6 +906,10 @@
 		mouldInput.min = '1';
 
 		mouldInput.value = item.mould || '';
+
+		mouldInput.style.width = '80px';
+
+		mouldInput.style.textAlign = 'center';
 
 		tdMould.appendChild(mouldInput);
 

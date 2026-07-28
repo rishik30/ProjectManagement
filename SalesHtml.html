@@ -3,51 +3,60 @@
 	<!-- Search Sales -->
 	<!-- ============================================== -->
 
-	<div id="salesSearchSection" class="section">
-		<div class="section-title">Search Sales</div>
-
-		<div class="section">
-			<label>Sales ID</label>
-			<input type="text" id="searchSalesId" />
-		</div>
-
-		<div class="section">
-			<label>Customer</label>
-			<select id="searchCustomer">
-				<option value="">All Customers</option>
-			</select>
-		</div>
-
-		<div class="section">
-			<label>Date From</label>
-			<input type="date" id="searchFromDate" />
-		</div>
-
-		<div class="section">
-			<label>Date To</label>
-			<input type="date" id="searchToDate" />
-		</div>
-
-		<div class="button-container">
-			<button id="searchSalesBtn" class="primary-btn">Search</button>
-
-			<button id="clearSalesSearchBtn" class="secondary-btn">Clear</button>
-		</div>
+	<div class="button-container">
+		<button id="toggleSalesSearchBtn" class="secondary-btn">
+			Search Records ▼
+		</button>
 	</div>
 
-	<hr />
+	<div id="salesSearchArea" style="display: none">
+		<!-- Search Filters -->
+		<div id="salesSearchSection" class="section">
+			<div class="section-title">Search Sales</div>
 
-	<!-- ============================================== -->
-	<!-- Search Results -->
-	<!-- ============================================== -->
+			<div class="section">
+				<label>Sales ID</label>
+				<input type="text" id="searchSalesId" />
+			</div>
 
-	<div id="salesSearchResults" class="section">
-		<div class="section-title">Search Results</div>
+			<div class="section">
+				<label>Customer</label>
+				<select id="searchCustomer">
+					<option value="">All Customers</option>
+				</select>
+			</div>
 
-		<div id="salesSearchContainer">No records searched.</div>
+			<div class="section">
+				<label>Date From</label>
+				<input type="date" id="searchFromDate" />
+			</div>
+
+			<div class="section">
+				<label>Date To</label>
+				<input type="date" id="searchToDate" />
+			</div>
+
+			<div class="button-container">
+				<button id="searchSalesBtn" class="primary-btn">Search</button>
+
+				<button id="clearSalesSearchBtn" class="secondary-btn">Clear</button>
+			</div>
+		</div>
+
+		<hr />
+
+		<!-- ============================================== -->
+		<!-- Search Results -->
+		<!-- ============================================== -->
+
+		<div id="salesSearchResults" class="section">
+			<div class="section-title">Search Results</div>
+
+			<div id="salesSearchContainer">No records searched.</div>
+		</div>
+
+		<hr id="salesSearchDivider" style="display: none" />
 	</div>
-
-	<hr />
 
 	<!-- ============================================== -->
 	<!-- Sale Entry -->

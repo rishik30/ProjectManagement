@@ -181,4 +181,28 @@
 	.remove-product-btn:hover {
 		background: #b71c1c;
 	}
+
+	.search-results-table {
+		max-height: 350px;
+		overflow-y: auto;
+
+		border: 1px solid #ddd;
+		border-radius: 6px;
+
+		background: #fff;
+	}
+
+	.search-results-table table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+	.search-results-table thead th {
+		position: sticky;
+		top: 0;
+		z-index: 10;
+
+		/* Match the project's table header styling */
+		background: #1976d2;
+		color: #fff;
+	}
 </style>
