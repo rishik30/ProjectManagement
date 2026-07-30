@@ -1,0 +1,73 @@
+<!doctype html>
+
+<html>
+	<head>
+		<base target="_top" />
+
+		<?!= include('Styles'); ?>
+	</head>
+
+	<body>
+		<div class="header">
+			<h2>Stock Adjustment</h2>
+		</div>
+
+		<div id="content">
+			<div id="stock-adjustment-page" class="page">
+				<!-- ============================================== -->
+				<!-- Stock Adjustment Entry -->
+				<!-- ============================================== -->
+
+				<div class="section">
+					<label>Date</label>
+
+					<input type="date" id="stockAdjustmentDate" />
+				</div>
+
+				<div class="section">
+					<div class="section-title">Products</div>
+
+					<select id="stockAdjustmentProduct">
+						<!-- <option value="">Select Product</option> -->
+					</select>
+				</div>
+
+				<div class="section">
+					<label>Quantity</label>
+
+					<input type="number" id="stockAdjustmentQuantity" />
+				</div>
+
+				<div class="section">
+					<label>Remarks</label>
+
+					<textarea id="stockAdjustmentRemarks" rows="3"></textarea>
+				</div>
+
+				<!-- ============================================== -->
+				<!-- Buttons -->
+				<!-- ============================================== -->
+
+				<div class="button-container">
+					<button
+						id="btnSaveAdjustment"
+						class="primary-btn"
+						onclick="saveAdjustment()"
+					>
+						Save
+					</button>
+
+					<button
+						id="btnCancelAdjustment"
+						class="secondary-btn"
+						onclick="cancelAdjustment()"
+					>
+						Cancel
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<?!= include("StockAdjustmentScripts"); ?>
+	</body>
+</html>

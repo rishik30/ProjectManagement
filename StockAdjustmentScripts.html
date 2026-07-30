@@ -1,0 +1,131 @@
+<script>
+	let products = [];
+	document.addEventListener('DOMContentLoaded', initializeAdjustmentForm);
+
+	/**
+	 * -----------------------------------------------------------
+	 * Initial Load
+	 * -----------------------------------------------------------
+	 */
+	function initializeAdjustmentForm() {
+		loadMasters();
+		clearAdjustmentForm();
+	}
+
+	function loadMasters() {
+		google.script.run.withSuccessHandler(populateMasters).getSalesFormData();
+	}
+
+	function populateMasters(data) {
+		products = data.products;
+
+		populateProductDropdown(document.getElementById('stockAdjustmentProduct'));
+	}
+
+	function populateProductDropdown(dropdown, selectedId = null) {
+		console.log('Products available:', products);
+		dropdown.innerHTML = '<option value="">Select Product</option>';
+
+		products.forEach((product) => {
+			const option = document.createElement('option');
+
+			option.value = product.id;
+
+			option.textContent = product.name;
+
+			if (product.id === selectedId) {
+				option.selected = true;
+			}
+
+			dropdown.appendChild(option);
+		});
+	}
+
+	function clearAdjustmentForm() {
+		document.getElementById('stockAdjustmentDate').valueAsDate = new Date();
+
+		document.getElementById('stockAdjustmentProduct').selectedIndex = 0;
+
+		document.getElementById('stockAdjustmentQuantity').value = '';
+
+		document.getElementById('stockAdjustmentRemarks').value = '';
+	}
+
+	function cancelAdjustment() {
+		clearAdjustmentForm();
+	}
+
+	function collectAdjustmentData() {
+		const productSelect = document.getElementById('stockAdjustmentProduct');
+
+		return {
+			date: document.getElementById('stockAdjustmentDate').value,
+
+			productId: productSelect.value,
+
+			productName: productSelect.options[productSelect.selectedIndex].text,
+
+			quantity: Number(
+				document.getElementById('stockAdjustmentQuantity').value,
+			),
+
+			remarks: document.getElementById('stockAdjustmentRemarks').value.trim(),
+		};
+	}
+
+	function validateAdjustment(data) {
+		if (!data.date) {
+			throw new Error('Please select a date.');
+		}
+
+		if (!data.productId) {
+			throw new Error('Please select a product.');
+		}
+
+		if (!data.quantity) {
+			throw new Error('Quantity cannot be zero.');
+		}
+	}
+
+	function saveAdjustment() {
+		const btn = document.getElementById('btnSaveAdjustment');
+
+		if (btn.disabled) return;
+
+		try {
+			const adjustment = collectAdjustmentData();
+
+			validateAdjustment(adjustment);
+
+			btn.disabled = true;
+			btn.textContent = 'Saving...';
+
+			google.script.run
+				.withSuccessHandler(onAdjustmentSaved)
+				.withFailureHandler(showError)
+				.postStockAdjustment(adjustment);
+		} catch (error) {
+			showError(error);
+		}
+	}
+
+	function onAdjustmentSaved(result) {
+		const btn = document.getElementById('btnSaveAdjustment');
+
+		btn.disabled = false;
+		btn.textContent = 'Save';
+
+		alert('Stock Adjustment saved successfully');
+
+		clearAdjustmentForm();
+	}
+
+	function showError(error) {
+		const btn = document.getElementById('btnSaveAdjustment');
+
+		btn.disabled = false;
+		btn.textContent = 'Save';
+
+		alert(error.message || error);
+	}
+</script>

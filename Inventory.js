@@ -4,6 +4,13 @@
  * =====================================================
  */
 
+const INVENTORY_TRANSACTION_TYPES = {
+	PRODUCTION: 'Production',
+	SALE: 'Sales',
+	OPENING_STOCK: 'Opening Stock',
+	ADJUSTMENT: 'Adjustment',
+};
+
 function initializeInventory() {
 	createSheetIfMissing(SHEETS.STOCK_LEDGER, [
 		'Ledger ID',
@@ -14,6 +21,7 @@ function initializeInventory() {
 		'Product Name',
 		'Qty In',
 		'Qty Out',
+		'Status',
 		'Remarks',
 	]);
 
@@ -76,7 +84,74 @@ function postSalesStock(sale) {
 }
 
 function postStockAdjustment(adjustment) {
-	// TODO
+	validateStockAdjustment(adjustment);
+
+	const quantity = Number(adjustment.quantity);
+
+	const qtyIn = quantity > 0 ? quantity : 0;
+	const qtyOut = quantity < 0 ? Math.abs(quantity) : 0;
+
+	const ledgerRows = [
+		{
+			date: adjustment.date,
+			transactionType: INVENTORY_TRANSACTION_TYPES.ADJUSTMENT,
+			referenceId: null,
+			productId: adjustment.productId,
+			productName: adjustment.productName,
+			qtyIn,
+			qtyOut,
+			remarks: adjustment.remarks || '',
+		},
+	];
+
+	const stockChanges = {
+		[adjustment.productId]: {
+			productName: adjustment.productName,
+			quantity,
+		},
+	};
+
+	try {
+		appendLedgerRows(ledgerRows);
+
+		updateCurrentStockBatch(stockChanges);
+
+		return JSON.parse(
+			JSON.stringify({
+				success: true,
+			}),
+		);
+	} catch (error) {
+		rollbackStockChanges(stockChanges);
+
+		throw error;
+	}
+}
+
+function validateStockAdjustment(adjustment) {
+	if (!adjustment) {
+		throw new Error('Adjustment data is required.');
+	}
+
+	if (!adjustment.productId) {
+		throw new Error('Please select a product.');
+	}
+
+	const qty = Number(adjustment.quantity);
+
+	if (!qty) {
+		throw new Error('Quantity cannot be zero.');
+	}
+
+	if (qty < 0) {
+		const stock = getCurrentStockMap();
+
+		const available = Number(stock[adjustment.productId] || 0);
+
+		if (available < Math.abs(qty)) {
+			throw new Error(`Insufficient stock. Available : ${available}`);
+		}
+	}
 }
 
 /**

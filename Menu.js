@@ -5,8 +5,9 @@
  */
 
 function onOpen() {
-	SpreadsheetApp.getUi()
-		.createMenu('Production System')
+	const ui = SpreadsheetApp.getUi();
+
+	ui.createMenu('Production System')
 
 		.addItem('Daily Production', 'openProductionSidebar')
 
@@ -18,15 +19,19 @@ function onOpen() {
 
 		.addItem('Customer Master', 'showCustomerSidebar')
 
+		.addItem('Stock Adjustments', 'showStockAdjustmentsSidebar')
+
 		.addSeparator()
 
-		.addItem('Product Report', 'generateProductReport')
-
-		.addItem('Machine Report', 'generateMachineReport')
-
-		.addItem('Daily Report', 'generateDailyReport')
-
 		.addItem('Dashboard', 'openDashboard')
+
+		.addSubMenu(
+			ui
+				.createMenu('Reports')
+				.addItem('Product Report', 'generateProductReport')
+				.addItem('Machine Report', 'generateMachineReport')
+				.addItem('Daily Report', 'generateDailyReport'),
+		)
 
 		.addSeparator()
 
@@ -88,6 +93,14 @@ function showSalesSidebar() {
 	const html = HtmlService.createTemplateFromFile('SalesSidebar')
 		.evaluate()
 		.setTitle('Sales');
+
+	SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function showStockAdjustmentsSidebar() {
+	const html = HtmlService.createTemplateFromFile('StockAdjustmentSidebar')
+		.evaluate()
+		.setTitle('Stock Adjustments');
 
 	SpreadsheetApp.getUi().showSidebar(html);
 }
