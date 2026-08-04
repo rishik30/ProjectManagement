@@ -46,9 +46,14 @@ function getAllProducts() {
 	const nameIndex = headers.indexOf('Product Name');
 
 	const activeIndex = headers.indexOf('Active');
+	const productTypeIndex = headers.indexOf('Product Type');
 
 	return values
-		.filter((r) => r[activeIndex] === true)
+		.filter(
+			(r) =>
+				r[activeIndex] === true &&
+				(productTypeIndex === -1 || String(r[productTypeIndex] || 'Standard').toLowerCase() !== 'bundle'),
+		)
 		.map((r) => ({
 			id: r[idIndex],
 

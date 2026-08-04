@@ -14,6 +14,7 @@ function onOpen() {
 		.addItem('Machine Setup', 'openMachineSetupSidebar')
 
 		.addItem('Sales', 'showSalesSidebar')
+		.addItem('Painting & Packing', 'showInventoryProcessingSidebar')
 
 		.addSeparator()
 
@@ -47,6 +48,7 @@ function onOpen() {
 
 	// Initialize Inventory Engine
 	initializeInventory();
+	initializeStagedInventory();
 }
 
 function openProductionSidebar() {
@@ -101,6 +103,14 @@ function showStockAdjustmentsSidebar() {
 	const html = HtmlService.createTemplateFromFile('StockAdjustmentSidebar')
 		.evaluate()
 		.setTitle('Stock Adjustments');
+
+	SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function showInventoryProcessingSidebar() {
+	const html = HtmlService.createTemplateFromFile('InventoryProcessingSidebar')
+		.evaluate()
+		.setTitle('Painting & Packing');
 
 	SpreadsheetApp.getUi().showSidebar(html);
 }

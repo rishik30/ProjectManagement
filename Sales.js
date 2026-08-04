@@ -152,6 +152,13 @@ function addSale(sale) {
 			appendLedgerRows(inventoryData.ledgerRows);
 
 			updateCurrentStockBatch(inventoryData.stockChanges);
+
+			updateStageStockBatch(
+				sale.products.map((item) => ({
+					productId: item.productId, productName: item.productName,
+					stage: INVENTORY_STAGES.PACKED, quantity: -Number(item.pieces),
+				})),
+			);
 		} catch (error) {
 			rollbackSale(salesId);
 
@@ -285,6 +292,13 @@ function updateSale(salesId, sale) {
 
 			updateCurrentStockBatch(inventoryData.stockChanges);
 
+			updateStageStockBatch(
+				sale.products.map((item) => ({
+					productId: item.productId, productName: item.productName,
+					stage: INVENTORY_STAGES.PACKED, quantity: -Number(item.pieces),
+				})),
+			);
+
 			return true;
 		} catch (error) {
 			restoreSale(salesId, oldSale);
@@ -337,7 +351,7 @@ function deleteSale(salesId) {
  */
 function validateSaleStock(sale, salesId = '') {
 	try {
-		const stock = getCurrentStockMap();
+		const stock = getStageStockMap(INVENTORY_STAGES.PACKED);
 
 		// If editing an existing sale, temporarily restore its stock
 		if (salesId) {
@@ -399,6 +413,7 @@ function buildSalesInventoryData(salesId, sale) {
 			productName: item.productName,
 			qtyIn: 0,
 			qtyOut: Number(item.pieces),
+			fromStage: INVENTORY_STAGES.PACKED,
 			status: 'Active',
 			remarks: sale.remarks || '',
 		});
@@ -458,9 +473,16 @@ function restoreSale(salesId, oldSale) {
 
 		const inventoryData = buildSalesInventoryData(salesId, oldSale);
 
-		appendLedgerRows(inventoryData.ledgerRows);
+			appendLedgerRows(inventoryData.ledgerRows);
 
-		updateCurrentStockBatch(inventoryData.stockChanges);
+			updateCurrentStockBatch(inventoryData.stockChanges);
+
+			updateStageStockBatch(
+				oldSale.products.map((item) => ({
+					productId: item.productId, productName: item.productName,
+					stage: INVENTORY_STAGES.PACKED, quantity: -Number(item.pieces),
+				})),
+			);
 	} catch (error) {
 		logError('restoreSale', error, salesId);
 

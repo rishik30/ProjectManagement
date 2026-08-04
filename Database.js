@@ -29,18 +29,25 @@ function getActiveProducts() {
 
 	const values = sheet.getDataRange().getValues();
 
-	values.shift(); // Remove header
+	const headers = values.shift();
+	const columns = getProductColumnMap(headers);
 
 	return values
-		.filter((row) => row[6] === true || row[6] === 'TRUE')
-		.map((row) => ({
-			id: row[0],
-			name: row[1],
-			defaultMould: row[2],
-			piecesPerPacket: Number(row[3]) || 0,
-			packetsPerBox: Number(row[4]) || 0,
-			category: row[5],
-		}));
+		.filter((row) => row[columns.active] === true || row[columns.active] === 'TRUE')
+		.map((row) => {
+			const productType = row[columns.productType] || 'Standard';
+			const isBundle = String(productType).toLowerCase() === 'bundle';
+			return {
+				id: row[columns.id], name: row[columns.name],
+				defaultMould: row[columns.defaultMould],
+				// A bundle's selling unit is always one packed box.
+				piecesPerPacket: isBundle ? 1 : Number(row[columns.piecesPerPacket]) || 1,
+				packetsPerBox: isBundle ? 1 : Number(row[columns.packetsPerBox]) || 1,
+				category: row[columns.category],
+				requiresPainting: isPaintingRequired(row[columns.requiresPainting]),
+				productType,
+			};
+		});
 }
 
 function getSalesFormData() {
