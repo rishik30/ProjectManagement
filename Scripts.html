@@ -765,6 +765,9 @@
 		const machine = setupMachines.find((m) => m.id === machineId);
 
 		let message = '';
+		let totalAddedMoulds = 0,
+			totalUpdatedMoulds = 0,
+			totalDeletedMoulds = 0;
 
 		message += 'Please confirm machine configuration\n\n';
 
@@ -777,10 +780,11 @@
 			changeSet.added.forEach((item) => {
 				const product = setupProducts.find((p) => p.id === item.productId);
 
+				totalAddedMoulds += Number(item.mould);
 				message += `${product.name} (Mould ${item.mould})\n`;
 			});
 
-			message += '\n';
+			message += 'Total Added Moulds: ' + totalAddedMoulds + '\n';
 		}
 
 		if (changeSet.updated.length) {
@@ -790,10 +794,11 @@
 			changeSet.updated.forEach((item) => {
 				const product = setupProducts.find((p) => p.id === item.productId);
 
+				totalUpdatedMoulds += Number(item.newMould) - Number(item.oldMould);
 				message += `${product.name} (${item.oldMould} → ${item.newMould})\n`;
 			});
 
-			message += '\n';
+			message += 'Total Updated Moulds: ' + totalUpdatedMoulds + '\n';
 		}
 
 		if (changeSet.removed.length) {
@@ -803,10 +808,11 @@
 			changeSet.removed.forEach((item) => {
 				const product = setupProducts.find((p) => p.id === item.productId);
 
+				totalDeletedMoulds += Number(originalMap[item.productId]);
 				message += `${product.name}\n`;
 			});
 
-			message += '\n';
+			message += 'Total Deleted Moulds: ' + totalDeletedMoulds + '\n';
 		}
 
 		if (
