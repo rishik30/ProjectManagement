@@ -13,7 +13,9 @@
 	}
 
 	function loadMasters() {
-		google.script.run.withSuccessHandler(populateMasters).getSalesFormData();
+		google.script.run
+			.withSuccessHandler(populateMasters)
+			.getInventoryProductFormData();
 	}
 
 	function populateMasters(data) {

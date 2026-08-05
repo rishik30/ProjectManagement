@@ -40,29 +40,38 @@ function initializeInventory() {
 	]);
 }
 
-/**
- * Creates the stage-aware inventory structures. Existing aggregate stock is
- * migrated once into Packed so historical stock remains saleable.
- */
+/** Creates the stage-aware inventory structures without assigning legacy stock to a stage. */
 function initializeStagedInventory() {
 	ensureLedgerStageColumns();
 	createSheetIfMissing(SHEETS.STAGE_STOCK, [
-		'Product ID', 'Product Name', 'Stage', 'Available Qty',
+		'Product ID',
+		'Product Name',
+		'Stage',
+		'Available Qty',
 	]);
 	createSheetIfMissing(SHEETS.BUNDLE_BOM, [
-		'Bundle ID', 'Bundle Name', 'Component ID', 'Component Name', 'Qty Per Bundle',
+		'Bundle ID',
+		'Bundle Name',
+		'Component ID',
+		'Component Name',
+		'Qty Per Bundle',
 	]);
 	ensureProductMasterColumns();
-	migrateLegacyStockToPacked();
 }
 
 function ensureLedgerStageColumns() {
 	const sheet = getSheet(SHEETS.STOCK_LEDGER);
 	if (!sheet) return;
-	const headers = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
-	if (headers.indexOf('From Stage') === -1) sheet.getRange(1, headers.length + 1).setValue('From Stage');
-	const refreshedHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-	if (refreshedHeaders.indexOf('To Stage') === -1) sheet.getRange(1, refreshedHeaders.length + 1).setValue('To Stage');
+	const headers = sheet
+		.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 1))
+		.getValues()[0];
+	if (headers.indexOf('From Stage') === -1)
+		sheet.getRange(1, headers.length + 1).setValue('From Stage');
+	const refreshedHeaders = sheet
+		.getRange(1, 1, 1, sheet.getLastColumn())
+		.getValues()[0];
+	if (refreshedHeaders.indexOf('To Stage') === -1)
+		sheet.getRange(1, refreshedHeaders.length + 1).setValue('To Stage');
 }
 
 function ensureProductMasterColumns() {
@@ -72,22 +81,18 @@ function ensureProductMasterColumns() {
 	if (headers.indexOf('Requires Painting') === -1) {
 		sheet.getRange(1, headers.length + 1).setValue('Requires Painting');
 		headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-		if (sheet.getLastRow() > 1) sheet.getRange(2, headers.length, sheet.getLastRow() - 1, 1).setValue('Yes');
+		if (sheet.getLastRow() > 1)
+			sheet
+				.getRange(2, headers.length, sheet.getLastRow() - 1, 1)
+				.setValue('Yes');
 	}
 	if (headers.indexOf('Product Type') === -1) {
 		sheet.getRange(1, headers.length + 1).setValue('Product Type');
-		if (sheet.getLastRow() > 1) sheet.getRange(2, headers.length + 1, sheet.getLastRow() - 1, 1).setValue('Standard');
+		if (sheet.getLastRow() > 1)
+			sheet
+				.getRange(2, headers.length + 1, sheet.getLastRow() - 1, 1)
+				.setValue('Standard');
 	}
-}
-
-function migrateLegacyStockToPacked() {
-	const stageSheet = getSheet(SHEETS.STAGE_STOCK);
-	const legacySheet = getSheet(SHEETS.CURRENT_STOCK);
-	if (!stageSheet || !legacySheet || stageSheet.getLastRow() > 1 || legacySheet.getLastRow() <= 1) return;
-	const rows = legacySheet.getRange(2, 1, legacySheet.getLastRow() - 1, 3).getValues()
-		.filter((row) => row[0] && Number(row[2]) !== 0)
-		.map((row) => [row[0], row[1], INVENTORY_STAGES.PACKED, Number(row[2])]);
-	if (rows.length) stageSheet.getRange(2, 1, rows.length, 4).setValues(rows);
 }
 
 /**
@@ -175,12 +180,14 @@ function postStockAdjustment(adjustment) {
 		appendLedgerRows(ledgerRows);
 
 		updateCurrentStockBatch(stockChanges);
-		updateStageStockBatch([{
-			productId: adjustment.productId,
-			productName: adjustment.productName,
-			stage: adjustment.stage || INVENTORY_STAGES.PACKED,
-			quantity,
-		}]);
+		updateStageStockBatch([
+			{
+				productId: adjustment.productId,
+				productName: adjustment.productName,
+				stage: adjustment.stage || INVENTORY_STAGES.PACKED,
+				quantity,
+			},
+		]);
 
 		return JSON.parse(
 			JSON.stringify({
@@ -285,12 +292,20 @@ function reverseTransaction(referenceId, remarks = 'Transaction Reversed') {
 
 			rowsToUpdate.push(i + 1);
 
-			if (fromStage && qtyOut) stageChanges.push({
-				productId, productName, stage: fromStage, quantity: qtyOut,
-			});
-			if (toStage && qtyIn) stageChanges.push({
-				productId, productName, stage: toStage, quantity: -qtyIn,
-			});
+			if (fromStage && qtyOut)
+				stageChanges.push({
+					productId,
+					productName,
+					stage: fromStage,
+					quantity: qtyOut,
+				});
+			if (toStage && qtyIn)
+				stageChanges.push({
+					productId,
+					productName,
+					stage: toStage,
+					quantity: -qtyIn,
+				});
 		}
 
 		if (reversalRows.length === 0) {
@@ -446,10 +461,14 @@ function getProductColumnMap(headers) {
 		return index === -1 ? fallback : index;
 	};
 	return {
-		id: column('Product ID', 0), name: column('Product Name', 1),
-		defaultMould: column('Default Mould', 2), piecesPerPacket: column('Pieces Per Packet', 3),
-		packetsPerBox: column('Packets Per Box', 4), category: column('Category', 5),
-		active: column('Active', 6), requiresPainting: column('Requires Painting', -1),
+		id: column('Product ID', 0),
+		name: column('Product Name', 1),
+		defaultMould: column('Default Mould', 2),
+		piecesPerPacket: column('Pieces Per Packet', 3),
+		packetsPerBox: column('Packets Per Box', 4),
+		category: column('Category', 5),
+		active: column('Active', 6),
+		requiresPainting: column('Requires Painting', -1),
 		productType: column('Product Type', -1),
 	};
 }
@@ -464,12 +483,22 @@ function getProductCatalog() {
 	if (!sheet || sheet.getLastRow() <= 1) return [];
 	const values = sheet.getDataRange().getValues();
 	const columns = getProductColumnMap(values.shift());
-	return values.filter((row) => row[columns.active] === true || String(row[columns.active]).toUpperCase() === 'TRUE')
+	return values
+		.filter(
+			(row) =>
+				row[columns.active] === true ||
+				String(row[columns.active]).toUpperCase() === 'TRUE',
+		)
 		.map((row) => ({
-			id: row[columns.id], name: row[columns.name],
+			id: row[columns.id],
+			name: row[columns.name],
 			requiresPainting: isPaintingRequired(row[columns.requiresPainting]),
 			productType: String(row[columns.productType] || 'Standard'),
-			piecesPerBox: Math.max(1, Number(row[columns.piecesPerPacket] || 1) * Number(row[columns.packetsPerBox] || 1)),
+			piecesPerBox: Math.max(
+				1,
+				Number(row[columns.piecesPerPacket] || 1) *
+					Number(row[columns.packetsPerBox] || 1),
+			),
 		}));
 }
 
@@ -482,19 +511,64 @@ function getProductInfo(productId) {
 function getBundleComponents(bundleId) {
 	const sheet = getSheet(SHEETS.BUNDLE_BOM);
 	if (!sheet || sheet.getLastRow() <= 1) return [];
-	return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues()
+	return sheet
+		.getRange(2, 1, sheet.getLastRow() - 1, 5)
+		.getValues()
 		.filter((row) => row[0] === bundleId)
-		.map((row) => ({ productId: row[2], productName: row[3], quantity: Number(row[4]) }));
+		.map((row) => ({
+			productId: row[2],
+			productName: row[3],
+			quantity: Number(row[4]),
+		}));
 }
 
 function getStageStockMap(stage) {
 	const sheet = getSheet(SHEETS.STAGE_STOCK);
 	const result = {};
 	if (!sheet || sheet.getLastRow() <= 1) return result;
-	sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues().forEach((row) => {
-		if ((!stage || row[2] === stage) && row[0]) result[row[0]] = Number(row[3] || 0);
-	});
+	sheet
+		.getRange(2, 1, sheet.getLastRow() - 1, 4)
+		.getValues()
+		.forEach((row) => {
+			if ((!stage || row[2] === stage) && row[0])
+				result[row[0]] = Number(row[3] || 0);
+		});
 	return result;
+}
+
+/** Reads staged stock once, indexed as { productId: { Loose, Painted, Packed } }. */
+function getStageStockIndex() {
+	const sheet = getSheet(SHEETS.STAGE_STOCK);
+	const index = {};
+	if (!sheet || sheet.getLastRow() <= 1) return index;
+	sheet
+		.getRange(2, 1, sheet.getLastRow() - 1, 4)
+		.getValues()
+		.forEach((row) => {
+			if (!row[0] || !row[2]) return;
+			if (!index[row[0]]) index[row[0]] = {};
+			index[row[0]][row[2]] = Number(row[3] || 0);
+		});
+	return index;
+}
+
+function getBundleComponentsByBundle() {
+	const sheet = getSheet(SHEETS.BUNDLE_BOM);
+	const bundles = {};
+	if (!sheet || sheet.getLastRow() <= 1) return bundles;
+	sheet
+		.getRange(2, 1, sheet.getLastRow() - 1, 5)
+		.getValues()
+		.forEach((row) => {
+			if (!row[0] || !row[2]) return;
+			if (!bundles[row[0]]) bundles[row[0]] = [];
+			bundles[row[0]].push({
+				productId: row[2],
+				productName: row[3],
+				quantity: Number(row[4]),
+			});
+		});
+	return bundles;
 }
 
 function getAvailableStageStock(productId, stage) {
@@ -506,21 +580,34 @@ function updateStageStockBatch(changes) {
 	if (!changes || !changes.length) return;
 	const sheet = getSheet(SHEETS.STAGE_STOCK);
 	const lastRow = sheet.getLastRow();
-	const existing = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 4).getValues() : [];
+	const existing =
+		lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 4).getValues() : [];
 	const index = {};
-	existing.forEach((row, rowIndex) => { index[row[0] + '|' + row[2]] = rowIndex; });
+	existing.forEach((row, rowIndex) => {
+		index[row[0] + '|' + row[2]] = rowIndex;
+	});
 	const newRows = [];
 	changes.forEach((change) => {
 		const key = change.productId + '|' + change.stage;
 		if (Object.prototype.hasOwnProperty.call(index, key)) {
-			existing[index[key]][3] = Number(existing[index[key]][3] || 0) + Number(change.quantity);
+			existing[index[key]][3] =
+				Number(existing[index[key]][3] || 0) + Number(change.quantity);
 		} else {
 			index[key] = existing.length + newRows.length;
-			newRows.push([change.productId, change.productName, change.stage, Number(change.quantity)]);
+			newRows.push([
+				change.productId,
+				change.productName,
+				change.stage,
+				Number(change.quantity),
+			]);
 		}
 	});
-	if (existing.length) sheet.getRange(2, 1, existing.length, 4).setValues(existing);
-	if (newRows.length) sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 4).setValues(newRows);
+	if (existing.length)
+		sheet.getRange(2, 1, existing.length, 4).setValues(existing);
+	if (newRows.length)
+		sheet
+			.getRange(sheet.getLastRow() + 1, 1, newRows.length, 4)
+			.setValues(newRows);
 }
 
 function validateStageAvailability(changes) {
@@ -531,7 +618,10 @@ function validateStageAvailability(changes) {
 			? staged[key]
 			: getAvailableStageStock(change.productId, change.stage);
 		staged[key] = current + Number(change.quantity);
-		if (staged[key] < 0) throw new Error(`Insufficient ${change.stage} stock for ${change.productName}. Available: ${getAvailableStageStock(change.productId, change.stage)}`);
+		if (staged[key] < 0)
+			throw new Error(
+				`Insufficient ${change.stage} stock for ${change.productName}. Available: ${getAvailableStageStock(change.productId, change.stage)}`,
+			);
 	});
 }
 
@@ -540,19 +630,43 @@ function postPainting(data) {
 }
 
 function postPaintingUnsafe(data) {
-	if (!data || !data.productId || Number(data.quantity) <= 0) throw new Error('Product and positive quantity are required.');
+	if (!data || !data.productId || Number(data.quantity) <= 0)
+		throw new Error('Product and positive quantity are required.');
 	const product = getProductInfo(data.productId);
-	if (product.productType.toLowerCase() === 'bundle') throw new Error('Bundles cannot be painted.');
-	if (!product.requiresPainting) throw new Error(product.name + ' is configured for direct packing.');
+	if (product.productType.toLowerCase() === 'bundle')
+		throw new Error('Bundles cannot be painted.');
+	if (!product.requiresPainting)
+		throw new Error(product.name + ' is configured for direct packing.');
 	const changes = [
-		{ productId: product.id, productName: product.name, stage: INVENTORY_STAGES.LOOSE, quantity: -Number(data.quantity) },
-		{ productId: product.id, productName: product.name, stage: INVENTORY_STAGES.PAINTED, quantity: Number(data.quantity) },
+		{
+			productId: product.id,
+			productName: product.name,
+			stage: INVENTORY_STAGES.LOOSE,
+			quantity: -Number(data.quantity),
+		},
+		{
+			productId: product.id,
+			productName: product.name,
+			stage: INVENTORY_STAGES.PAINTED,
+			quantity: Number(data.quantity),
+		},
 	];
 	validateStageAvailability(changes);
 	const referenceId = 'PNT-' + Utilities.getUuid().slice(0, 8).toUpperCase();
-	appendLedgerRows([{ date: data.date || new Date(), transactionType: INVENTORY_TRANSACTION_TYPES.PAINTING, referenceId,
-		productId: product.id, productName: product.name, qtyIn: Number(data.quantity), qtyOut: Number(data.quantity),
-		fromStage: INVENTORY_STAGES.LOOSE, toStage: INVENTORY_STAGES.PAINTED, remarks: data.remarks || '' }]);
+	appendLedgerRows([
+		{
+			date: data.date || new Date(),
+			transactionType: INVENTORY_TRANSACTION_TYPES.PAINTING,
+			referenceId,
+			productId: product.id,
+			productName: product.name,
+			qtyIn: Number(data.quantity),
+			qtyOut: Number(data.quantity),
+			fromStage: INVENTORY_STAGES.LOOSE,
+			toStage: INVENTORY_STAGES.PAINTED,
+			remarks: data.remarks || '',
+		},
+	]);
 	updateStageStockBatch(changes);
 	return { success: true, referenceId };
 }
@@ -562,37 +676,88 @@ function postPacking(data) {
 }
 
 function postPackingUnsafe(data) {
-	if (!data || !data.productId || Number(data.boxes) <= 0) throw new Error('Product and positive box quantity are required.');
+	if (!data || !data.productId || Number(data.boxes) <= 0)
+		throw new Error('Product and positive box quantity are required.');
 	const product = getProductInfo(data.productId);
 	const boxes = Number(data.boxes);
 	const referenceId = 'PKG-' + Utilities.getUuid().slice(0, 8).toUpperCase();
-	const components = product.productType.toLowerCase() === 'bundle'
-		? getBundleComponents(product.id)
-		: [{ productId: product.id, productName: product.name, quantity: product.piecesPerBox }];
-	if (!components.length) throw new Error('No bundle BOM is configured for ' + product.name + '.');
+	const components =
+		product.productType.toLowerCase() === 'bundle'
+			? getBundleComponents(product.id)
+			: [
+					{
+						productId: product.id,
+						productName: product.name,
+						quantity: product.piecesPerBox,
+					},
+				];
+	if (!components.length)
+		throw new Error('No bundle BOM is configured for ' + product.name + '.');
 	const changes = [];
 	const ledgerRows = [];
 	components.forEach((component) => {
+		if (!component.productId || Number(component.quantity) <= 0)
+			throw new Error(
+				'Every bundle BOM row must have a product and positive quantity.',
+			);
 		const componentProduct = getProductInfo(component.productId);
-		const sourceStage = componentProduct.requiresPainting ? INVENTORY_STAGES.PAINTED : INVENTORY_STAGES.LOOSE;
+		const sourceStage = componentProduct.requiresPainting
+			? INVENTORY_STAGES.PAINTED
+			: INVENTORY_STAGES.LOOSE;
 		const required = Number(component.quantity) * boxes;
-		changes.push({ productId: component.productId, productName: componentProduct.name, stage: sourceStage, quantity: -required });
-		ledgerRows.push({ date: data.date || new Date(), transactionType: INVENTORY_TRANSACTION_TYPES.PACKING, referenceId,
-			productId: component.productId, productName: componentProduct.name, qtyIn: 0, qtyOut: required,
-			fromStage: sourceStage, remarks: 'Packed into ' + product.name + (data.remarks ? ': ' + data.remarks : '') });
+		changes.push({
+			productId: component.productId,
+			productName: componentProduct.name,
+			stage: sourceStage,
+			quantity: -required,
+		});
+		ledgerRows.push({
+			date: data.date || new Date(),
+			transactionType: INVENTORY_TRANSACTION_TYPES.PACKING,
+			referenceId,
+			productId: component.productId,
+			productName: componentProduct.name,
+			qtyIn: 0,
+			qtyOut: required,
+			fromStage: sourceStage,
+			remarks:
+				'Packed into ' +
+				product.name +
+				(data.remarks ? ': ' + data.remarks : ''),
+		});
 	});
 	// Packed stock is recorded in selling units. Standard products use pieces; bundle products use boxes.
-	const packedQuantity = product.productType.toLowerCase() === 'bundle' ? boxes : boxes * product.piecesPerBox;
-	changes.push({ productId: product.id, productName: product.name, stage: INVENTORY_STAGES.PACKED, quantity: packedQuantity });
-	ledgerRows.push({ date: data.date || new Date(), transactionType: INVENTORY_TRANSACTION_TYPES.PACKING, referenceId,
-		productId: product.id, productName: product.name, qtyIn: packedQuantity, qtyOut: 0,
-		toStage: INVENTORY_STAGES.PACKED, remarks: data.remarks || '' });
+	const packedQuantity =
+		product.productType.toLowerCase() === 'bundle'
+			? boxes
+			: boxes * product.piecesPerBox;
+	changes.push({
+		productId: product.id,
+		productName: product.name,
+		stage: INVENTORY_STAGES.PACKED,
+		quantity: packedQuantity,
+	});
+	ledgerRows.push({
+		date: data.date || new Date(),
+		transactionType: INVENTORY_TRANSACTION_TYPES.PACKING,
+		referenceId,
+		productId: product.id,
+		productName: product.name,
+		qtyIn: packedQuantity,
+		qtyOut: 0,
+		toStage: INVENTORY_STAGES.PACKED,
+		remarks: data.remarks || '',
+	});
 	validateStageAvailability(changes);
 	appendLedgerRows(ledgerRows);
 	const aggregateChanges = {};
 	ledgerRows.forEach((row) => {
 		const quantity = Number(row.qtyIn || 0) - Number(row.qtyOut || 0);
-		if (!aggregateChanges[row.productId]) aggregateChanges[row.productId] = { productName: row.productName, quantity: 0 };
+		if (!aggregateChanges[row.productId])
+			aggregateChanges[row.productId] = {
+				productName: row.productName,
+				quantity: 0,
+			};
 		aggregateChanges[row.productId].quantity += quantity;
 	});
 	updateCurrentStockBatch(aggregateChanges);
@@ -602,7 +767,14 @@ function postPackingUnsafe(data) {
 
 function getPackingFormData() {
 	const products = getProductCatalog();
-	return { products, availability: getInventoryAvailability(products) };
+	return {
+		products,
+		availability: getInventoryAvailability(
+			products,
+			getStageStockIndex(),
+			getBundleComponentsByBundle(),
+		),
+	};
 }
 
 function withInventoryLock(callback) {
@@ -615,26 +787,57 @@ function withInventoryLock(callback) {
 	}
 }
 
-function getInventoryAvailability(products) {
+function getInventoryAvailability(products, stageStock, bundleComponents) {
+	const stageIndex = stageStock || getStageStockIndex();
+	const bundleIndex = bundleComponents || getBundleComponentsByBundle();
+	const productIndex = {};
+	products.forEach((product) => {
+		productIndex[product.id] = product;
+	});
+	const quantityAt = (productId, stage) =>
+		Number((stageIndex[productId] || {})[stage] || 0);
+
 	return products.map((product) => {
-		const packedQuantity = getAvailableStageStock(product.id, INVENTORY_STAGES.PACKED);
-		const packed = product.productType.toLowerCase() === 'bundle'
-			? packedQuantity
-			: Math.floor(packedQuantity / product.piecesPerBox);
+		const packedQuantity = quantityAt(product.id, INVENTORY_STAGES.PACKED);
+		const packed =
+			product.productType.toLowerCase() === 'bundle'
+				? packedQuantity
+				: Math.floor(packedQuantity / product.piecesPerBox);
 		let packable = 0;
 		if (product.productType.toLowerCase() === 'bundle') {
-			const components = getBundleComponents(product.id);
-			packable = components.length ? Math.min(...components.map((component) => {
-				const componentProduct = getProductInfo(component.productId);
-				const stage = componentProduct.requiresPainting ? INVENTORY_STAGES.PAINTED : INVENTORY_STAGES.LOOSE;
-				return Math.floor(getAvailableStageStock(component.productId, stage) / component.quantity);
-			})) : 0;
+			const components = bundleIndex[product.id] || [];
+			packable = components.length
+				? Math.min(
+						...components.map((component) => {
+							const componentProduct = productIndex[component.productId];
+							if (!componentProduct || Number(component.quantity) <= 0)
+								return 0;
+							const stage = componentProduct.requiresPainting
+								? INVENTORY_STAGES.PAINTED
+								: INVENTORY_STAGES.LOOSE;
+							return Math.floor(
+								quantityAt(component.productId, stage) / component.quantity,
+							);
+						}),
+					)
+				: 0;
 		} else {
-			const stage = product.requiresPainting ? INVENTORY_STAGES.PAINTED : INVENTORY_STAGES.LOOSE;
-			packable = Math.floor(getAvailableStageStock(product.id, stage) / product.piecesPerBox);
+			const stage = product.requiresPainting
+				? INVENTORY_STAGES.PAINTED
+				: INVENTORY_STAGES.LOOSE;
+			packable = Math.floor(
+				quantityAt(product.id, stage) / product.piecesPerBox,
+			);
 		}
-		return { productId: product.id, productName: product.name, productType: product.productType,
-			packed, packedQuantity, canPackNow: Math.max(0, packable), canFulfilAfterPacking: packed + Math.max(0, packable) };
+		return {
+			productId: product.id,
+			productName: product.name,
+			productType: product.productType,
+			packed,
+			packedQuantity,
+			canPackNow: Math.max(0, packable),
+			canFulfilAfterPacking: packed + Math.max(0, packable),
+		};
 	});
 }
 
