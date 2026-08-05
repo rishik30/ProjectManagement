@@ -21,6 +21,8 @@ function onOpen() {
 
 		.addItem('Inventory Movements', 'showStockAdjustmentsSidebar')
 
+		.addItem('Bundle BOM', 'showBundleBomSidebar')
+
 		.addSeparator()
 
 		.addItem('Dashboard', 'openDashboard')
@@ -102,6 +104,14 @@ function showStockAdjustmentsSidebar() {
 	const html = HtmlService.createTemplateFromFile('StockAdjustmentSidebar')
 		.evaluate()
 		.setTitle('Stock Adjustments');
+
+	SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function showBundleBomSidebar() {
+	const html = HtmlService.createTemplateFromFile('BundleBomSidebar')
+		.evaluate()
+		.setTitle('Bundle BOM');
 
 	SpreadsheetApp.getUi().showSidebar(html);
 }

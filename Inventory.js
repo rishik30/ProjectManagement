@@ -546,6 +546,67 @@ function getBundleComponents(bundleId) {
 		}));
 }
 
+function getBundleBomFormData() {
+	const products = getProductCatalog();
+	return {
+		bundles: products.filter(
+			(product) => product.productType.toLowerCase() === 'bundle',
+		),
+		components: products.filter(
+			(product) => product.productType.toLowerCase() !== 'bundle',
+		),
+		bomByBundle: getBundleComponentsByBundle(),
+	};
+}
+
+/** Replaces one bundle's recipe after validating all component products. */
+function saveBundleBom(data) {
+	if (!data || !data.bundleId) throw new Error('Select a bundle SKU.');
+	if (!Array.isArray(data.components) || data.components.length === 0) {
+		throw new Error('Add at least one component product.');
+	}
+
+	return withInventoryLock(() => {
+		const products = getProductCatalog();
+		const byId = {};
+		products.forEach((product) => { byId[product.id] = product; });
+		const bundle = byId[data.bundleId];
+		if (!bundle || bundle.productType.toLowerCase() !== 'bundle') {
+			throw new Error('The selected product is not an active bundle SKU.');
+		}
+
+		const componentIds = new Set();
+		const components = data.components.map((component) => {
+			const product = byId[component.productId];
+			if (!product || product.productType.toLowerCase() === 'bundle') {
+				throw new Error('Every component must be an active standard product.');
+			}
+			if (componentIds.has(product.id)) {
+				throw new Error('A component can be included only once in a bundle.');
+			}
+			if (Number(component.quantity) <= 0) {
+				throw new Error('Component quantity must be greater than zero.');
+			}
+			componentIds.add(product.id);
+			return [bundle.id, bundle.name, product.id, product.name, Number(component.quantity)];
+		});
+
+		const sheet = getSheet(SHEETS.BUNDLE_BOM);
+		const existing = sheet.getLastRow() > 1
+			? sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues()
+			: [];
+		const retained = existing.filter((row) => row[0] !== bundle.id);
+		const rows = retained.concat(components);
+
+		if (sheet.getLastRow() > 1) {
+			sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).clearContent();
+		}
+		if (rows.length) sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+
+		return { success: true, bundleId: bundle.id };
+	});
+}
+
 function getCurrentStockColumnMap(headers) {
 	const column = (name, fallback) => {
 		const index = headers.indexOf(name);
