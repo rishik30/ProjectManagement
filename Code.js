@@ -30,7 +30,6 @@ const SHEETS = {
 	REPORT: 'Report',
 	STOCK_LEDGER: 'StockLedger',
 	CURRENT_STOCK: 'CurrentStock',
-	STAGE_STOCK: 'StageStock',
 	BUNDLE_BOM: 'Bundle_BOM',
 };
 

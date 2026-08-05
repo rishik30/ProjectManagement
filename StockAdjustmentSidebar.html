@@ -9,7 +9,7 @@
 
 	<body>
 		<div class="header">
-			<h2>Stock Adjustment</h2>
+			<h2>Inventory Movement</h2>
 		</div>
 
 		<div id="content">
@@ -22,6 +22,16 @@
 					<label>Date</label>
 
 					<input type="date" id="stockAdjustmentDate" />
+				</div>
+
+				<div class="section">
+					<label>Transaction Type</label>
+					<select id="inventoryTransactionType">
+						<option value="Allocation">Allocate Existing Stock</option>
+						<option value="Adjustment">Stock Adjustment</option>
+						<option value="Painting">Painting (Loose → Painted)</option>
+						<option value="Packing">Packing (→ Packed)</option>
+					</select>
 				</div>
 
 				<div class="section">
@@ -42,7 +52,7 @@
 				</div>
 
 				<div class="section">
-					<label>Quantity</label>
+					<label id="inventoryQuantityLabel">Quantity</label>
 
 					<input type="number" id="stockAdjustmentQuantity" />
 				</div>

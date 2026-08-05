@@ -9,6 +9,7 @@ const INVENTORY_TRANSACTION_TYPES = {
 	SALE: 'Sales',
 	OPENING_STOCK: 'Opening Stock',
 	ADJUSTMENT: 'Adjustment',
+	ALLOCATION: 'Stage Allocation',
 	PAINTING: 'Painting',
 	PACKING: 'Packing',
 };
@@ -17,6 +18,7 @@ const INVENTORY_STAGES = {
 	LOOSE: 'Loose',
 	PAINTED: 'Painted',
 	PACKED: 'Packed',
+	UNALLOCATED: 'Unallocated',
 };
 
 function initializeInventory() {
@@ -38,17 +40,14 @@ function initializeInventory() {
 		'Product Name',
 		'Available Qty',
 	]);
+
+	ensureCurrentStockStageColumns();
 }
 
-/** Creates the stage-aware inventory structures without assigning legacy stock to a stage. */
+/** Initializes stage columns in CurrentStock and the bundle definition sheet. */
 function initializeStagedInventory() {
 	ensureLedgerStageColumns();
-	createSheetIfMissing(SHEETS.STAGE_STOCK, [
-		'Product ID',
-		'Product Name',
-		'Stage',
-		'Available Qty',
-	]);
+	ensureCurrentStockStageColumns();
 	createSheetIfMissing(SHEETS.BUNDLE_BOM, [
 		'Bundle ID',
 		'Bundle Name',
@@ -57,6 +56,31 @@ function initializeStagedInventory() {
 		'Qty Per Bundle',
 	]);
 	ensureProductMasterColumns();
+}
+
+function ensureCurrentStockStageColumns() {
+	const sheet = getSheet(SHEETS.CURRENT_STOCK);
+	if (!sheet) return;
+	let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+	['Loose Qty', 'Painted Qty', 'Packed Qty'].forEach((header) => {
+		if (headers.indexOf(header) !== -1) return;
+		sheet.getRange(1, headers.length + 1).setValue(header);
+		headers.push(header);
+	});
+	if (headers.indexOf('Unallocated Qty') === -1) {
+		const column = headers.length + 1;
+		sheet.getRange(1, column).setValue('Unallocated Qty');
+		// Existing Available Qty is deliberately left unclassified until the user
+		// allocates it to Loose, Painted, or Packed through Inventory Movements.
+		if (sheet.getLastRow() > 1) {
+			const existingTotals = sheet
+				.getRange(2, 3, sheet.getLastRow() - 1, 1)
+				.getValues();
+			sheet
+				.getRange(2, column, existingTotals.length, 1)
+				.setValues(existingTotals);
+		}
+	}
 }
 
 function ensureLedgerStageColumns() {
@@ -522,32 +546,67 @@ function getBundleComponents(bundleId) {
 		}));
 }
 
+function getCurrentStockColumnMap(headers) {
+	const column = (name, fallback) => {
+		const index = headers.indexOf(name);
+		return index === -1 ? fallback : index;
+	};
+	return {
+		productId: column('Product ID', 0),
+		productName: column('Product Name', 1),
+		available: column('Available Qty', 2),
+		loose: column('Loose Qty', -1),
+		painted: column('Painted Qty', -1),
+		packed: column('Packed Qty', -1),
+		unallocated: column('Unallocated Qty', -1),
+	};
+}
+
+function getStageStockColumn(stage, columns) {
+	return {
+		[INVENTORY_STAGES.LOOSE]: columns.loose,
+		[INVENTORY_STAGES.PAINTED]: columns.painted,
+		[INVENTORY_STAGES.PACKED]: columns.packed,
+		[INVENTORY_STAGES.UNALLOCATED]: columns.unallocated,
+	}[stage];
+}
+
 function getStageStockMap(stage) {
-	const sheet = getSheet(SHEETS.STAGE_STOCK);
+	const sheet = getSheet(SHEETS.CURRENT_STOCK);
 	const result = {};
 	if (!sheet || sheet.getLastRow() <= 1) return result;
+	const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+	const columns = getCurrentStockColumnMap(headers);
+	const stageColumn = getStageStockColumn(stage, columns);
+	if (stageColumn === -1) return result;
 	sheet
-		.getRange(2, 1, sheet.getLastRow() - 1, 4)
+		.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn())
 		.getValues()
 		.forEach((row) => {
-			if ((!stage || row[2] === stage) && row[0])
-				result[row[0]] = Number(row[3] || 0);
+			if (row[columns.productId])
+				result[row[columns.productId]] = Number(row[stageColumn] || 0);
 		});
 	return result;
 }
 
-/** Reads staged stock once, indexed as { productId: { Loose, Painted, Packed } }. */
+/** Reads CurrentStock stage columns once, indexed as { productId: { Loose, Painted, Packed } }. */
 function getStageStockIndex() {
-	const sheet = getSheet(SHEETS.STAGE_STOCK);
+	const sheet = getSheet(SHEETS.CURRENT_STOCK);
 	const index = {};
 	if (!sheet || sheet.getLastRow() <= 1) return index;
+	const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+	const columns = getCurrentStockColumnMap(headers);
 	sheet
-		.getRange(2, 1, sheet.getLastRow() - 1, 4)
+		.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn())
 		.getValues()
 		.forEach((row) => {
-			if (!row[0] || !row[2]) return;
-			if (!index[row[0]]) index[row[0]] = {};
-			index[row[0]][row[2]] = Number(row[3] || 0);
+			if (!row[columns.productId]) return;
+			index[row[columns.productId]] = {
+				[INVENTORY_STAGES.LOOSE]: Number(row[columns.loose] || 0),
+				[INVENTORY_STAGES.PAINTED]: Number(row[columns.painted] || 0),
+				[INVENTORY_STAGES.PACKED]: Number(row[columns.packed] || 0),
+				[INVENTORY_STAGES.UNALLOCATED]: Number(row[columns.unallocated] || 0),
+			};
 		});
 	return index;
 }
@@ -578,35 +637,49 @@ function getAvailableStageStock(productId, stage) {
 /** Applies an array of changes: {productId, productName, stage, quantity}. */
 function updateStageStockBatch(changes) {
 	if (!changes || !changes.length) return;
-	const sheet = getSheet(SHEETS.STAGE_STOCK);
+	const sheet = getSheet(SHEETS.CURRENT_STOCK);
+	const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+	const columns = getCurrentStockColumnMap(headers);
 	const lastRow = sheet.getLastRow();
 	const existing =
-		lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 4).getValues() : [];
+		lastRow > 1
+			? sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues()
+			: [];
 	const index = {};
 	existing.forEach((row, rowIndex) => {
-		index[row[0] + '|' + row[2]] = rowIndex;
+		index[row[columns.productId]] = rowIndex;
 	});
 	const newRows = [];
 	changes.forEach((change) => {
-		const key = change.productId + '|' + change.stage;
-		if (Object.prototype.hasOwnProperty.call(index, key)) {
-			existing[index[key]][3] =
-				Number(existing[index[key]][3] || 0) + Number(change.quantity);
+		const stageColumn = getStageStockColumn(change.stage, columns);
+		if (stageColumn === -1)
+			throw new Error('CurrentStock stage columns are missing.');
+		if (Object.prototype.hasOwnProperty.call(index, change.productId)) {
+			const row = existing[index[change.productId]];
+			row[stageColumn] =
+				Number(row[stageColumn] || 0) + Number(change.quantity);
 		} else {
-			index[key] = existing.length + newRows.length;
-			newRows.push([
-				change.productId,
-				change.productName,
-				change.stage,
-				Number(change.quantity),
-			]);
+			const row = Array(headers.length).fill('');
+			row[columns.productId] = change.productId;
+			row[columns.productName] = change.productName;
+			row[columns.available] = 0;
+			row[stageColumn] = Number(change.quantity);
+			index[change.productId] = existing.length + newRows.length;
+			newRows.push(row);
 		}
 	});
 	if (existing.length)
-		sheet.getRange(2, 1, existing.length, 4).setValues(existing);
+		sheet
+			.getRange(2, 1, existing.length, sheet.getLastColumn())
+			.setValues(existing);
 	if (newRows.length)
 		sheet
-			.getRange(sheet.getLastRow() + 1, 1, newRows.length, 4)
+			.getRange(
+				sheet.getLastRow() + 1,
+				1,
+				newRows.length,
+				sheet.getLastColumn(),
+			)
 			.setValues(newRows);
 }
 
@@ -622,6 +695,58 @@ function validateStageAvailability(changes) {
 			throw new Error(
 				`Insufficient ${change.stage} stock for ${change.productName}. Available: ${getAvailableStageStock(change.productId, change.stage)}`,
 			);
+	});
+}
+
+/** Moves a known historical balance from Unallocated into a real stock stage. */
+function postStageAllocation(data) {
+	if (!data || !data.productId || Number(data.quantity) <= 0) {
+		throw new Error('Product and positive quantity are required.');
+	}
+	if (
+		![
+			INVENTORY_STAGES.LOOSE,
+			INVENTORY_STAGES.PAINTED,
+			INVENTORY_STAGES.PACKED,
+		].includes(data.stage)
+	) {
+		throw new Error('Select Loose, Painted, or Packed as the target stage.');
+	}
+	return withInventoryLock(() => {
+		const product = getProductInfo(data.productId);
+		const quantity = Number(data.quantity);
+		const changes = [
+			{
+				productId: product.id,
+				productName: product.name,
+				stage: INVENTORY_STAGES.UNALLOCATED,
+				quantity: -quantity,
+			},
+			{
+				productId: product.id,
+				productName: product.name,
+				stage: data.stage,
+				quantity,
+			},
+		];
+		validateStageAvailability(changes);
+		const referenceId = 'ALG-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+		appendLedgerRows([
+			{
+				date: data.date || new Date(),
+				transactionType: INVENTORY_TRANSACTION_TYPES.ALLOCATION,
+				referenceId,
+				productId: product.id,
+				productName: product.name,
+				qtyIn: quantity,
+				qtyOut: quantity,
+				fromStage: INVENTORY_STAGES.UNALLOCATED,
+				toStage: data.stage,
+				remarks: data.remarks || 'Historical stock allocation',
+			},
+		]);
+		updateStageStockBatch(changes);
+		return { success: true, referenceId };
 	});
 }
 

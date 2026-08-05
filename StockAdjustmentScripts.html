@@ -1,135 +1,139 @@
 <script>
 	let products = [];
-	document.addEventListener('DOMContentLoaded', initializeAdjustmentForm);
 
-	/**
-	 * -----------------------------------------------------------
-	 * Initial Load
-	 * -----------------------------------------------------------
-	 */
-	function initializeAdjustmentForm() {
-		loadMasters();
-		clearAdjustmentForm();
+	document.addEventListener('DOMContentLoaded', initializeInventoryForm);
+
+	function initializeInventoryForm() {
+		document
+			.getElementById('inventoryTransactionType')
+			.addEventListener('change', updateFormForTransaction);
+		loadProducts();
+		clearInventoryForm();
 	}
 
-	function loadMasters() {
+	function loadProducts() {
 		google.script.run
-			.withSuccessHandler(populateMasters)
+			.withSuccessHandler((data) => {
+				products = data.products;
+				updateFormForTransaction();
+			})
+			.withFailureHandler(showError)
 			.getInventoryProductFormData();
 	}
 
-	function populateMasters(data) {
-		products = data.products;
+	function updateFormForTransaction() {
+		const type = document.getElementById('inventoryTransactionType').value;
+		const stageSection = document
+			.getElementById('stockAdjustmentStage')
+			.closest('.section');
+		const dropdown = document.getElementById('stockAdjustmentProduct');
 
-		populateProductDropdown(document.getElementById('stockAdjustmentProduct'));
-	}
+		stageSection.style.display =
+			type === 'Adjustment' || type === 'Allocation' ? 'block' : 'none';
+		stageSection.querySelector('label').textContent =
+			type === 'Allocation' ? 'Allocate To Stage' : 'Stock Stage';
+		document.getElementById('inventoryQuantityLabel').textContent =
+			type === 'Packing' ? 'Boxes' : 'Quantity (pieces)';
 
-	function populateProductDropdown(dropdown, selectedId = null) {
-		console.log('Products available:', products);
-		dropdown.innerHTML = '<option value="">Select Product</option>';
-
-		products.forEach((product) => {
-			const option = document.createElement('option');
-
-			option.value = product.id;
-
-			option.textContent = product.name;
-
-			if (product.id === selectedId) {
-				option.selected = true;
+		const availableProducts = products.filter((product) => {
+			if (type === 'Painting') {
+				return (
+					String(product.productType).toLowerCase() !== 'bundle' &&
+					product.requiresPainting
+				);
 			}
+			return true;
+		});
 
+		dropdown.innerHTML = '<option value="">Select Product</option>';
+		availableProducts.forEach((product) => {
+			const option = document.createElement('option');
+			option.value = product.id;
+			option.textContent =
+				product.name +
+				(String(product.productType).toLowerCase() === 'bundle'
+					? ' (Bundle)'
+					: '');
 			dropdown.appendChild(option);
 		});
 	}
 
-	function clearAdjustmentForm() {
+	function clearInventoryForm() {
 		document.getElementById('stockAdjustmentDate').valueAsDate = new Date();
-
-		document.getElementById('stockAdjustmentProduct').selectedIndex = 0;
-
+		document.getElementById('inventoryTransactionType').value = 'Allocation';
 		document.getElementById('stockAdjustmentQuantity').value = '';
-
 		document.getElementById('stockAdjustmentRemarks').value = '';
+		document.getElementById('stockAdjustmentStage').value = 'Packed';
+		updateFormForTransaction();
 	}
 
 	function cancelAdjustment() {
-		clearAdjustmentForm();
+		clearInventoryForm();
 	}
 
-	function collectAdjustmentData() {
+	function collectFormData() {
 		const productSelect = document.getElementById('stockAdjustmentProduct');
-
 		return {
+			type: document.getElementById('inventoryTransactionType').value,
 			date: document.getElementById('stockAdjustmentDate').value,
-
 			productId: productSelect.value,
-
-			productName: productSelect.options[productSelect.selectedIndex].text,
-
+			productName: productSelect.selectedOptions[0]?.text || '',
 			stage: document.getElementById('stockAdjustmentStage').value,
-
-			quantity: Number(
-				document.getElementById('stockAdjustmentQuantity').value,
-			),
-
+			quantity: Number(document.getElementById('stockAdjustmentQuantity').value),
 			remarks: document.getElementById('stockAdjustmentRemarks').value.trim(),
 		};
 	}
 
-	function validateAdjustment(data) {
-		if (!data.date) {
-			throw new Error('Please select a date.');
-		}
-
-		if (!data.productId) {
-			throw new Error('Please select a product.');
-		}
-
-		if (!data.quantity) {
-			throw new Error('Quantity cannot be zero.');
-		}
-	}
-
 	function saveAdjustment() {
-		const btn = document.getElementById('btnSaveAdjustment');
-
-		if (btn.disabled) return;
+		const button = document.getElementById('btnSaveAdjustment');
+		if (button.disabled) return;
 
 		try {
-			const adjustment = collectAdjustmentData();
+			const data = collectFormData();
+			if (!data.date || !data.productId || !data.quantity) {
+				throw new Error('Date, product, and a non-zero quantity are required.');
+			}
+			if (data.type !== 'Adjustment' && data.quantity <= 0) {
+				throw new Error('Painting and packing quantities must be positive.');
+			}
 
-			validateAdjustment(adjustment);
+			button.disabled = true;
+			button.textContent = 'Saving...';
+			const request = google.script.run
+				.withSuccessHandler(onSaved)
+				.withFailureHandler(showError);
 
-			btn.disabled = true;
-			btn.textContent = 'Saving...';
-
-			google.script.run
-				.withSuccessHandler(onAdjustmentSaved)
-				.withFailureHandler(showError)
-				.postStockAdjustment(adjustment);
+			if (data.type === 'Allocation') {
+				request.postStageAllocation(data);
+			} else if (data.type === 'Painting') {
+				request.postPainting(data);
+			} else if (data.type === 'Packing') {
+				request.postPacking({
+					date: data.date,
+					productId: data.productId,
+					boxes: data.quantity,
+					remarks: data.remarks,
+				});
+			} else {
+				request.postStockAdjustment(data);
+			}
 		} catch (error) {
 			showError(error);
 		}
 	}
 
-	function onAdjustmentSaved(result) {
-		const btn = document.getElementById('btnSaveAdjustment');
-
-		btn.disabled = false;
-		btn.textContent = 'Save';
-
-		alert('Stock Adjustment saved successfully');
-
-		clearAdjustmentForm();
+	function onSaved(result) {
+		const button = document.getElementById('btnSaveAdjustment');
+		button.disabled = false;
+		button.textContent = 'Save';
+		alert('Inventory movement saved' + (result.referenceId ? '. Reference: ' + result.referenceId : '.') );
+		clearInventoryForm();
 	}
 
 	function showError(error) {
-		const btn = document.getElementById('btnSaveAdjustment');
-
-		btn.disabled = false;
-		btn.textContent = 'Save';
-
+		const button = document.getElementById('btnSaveAdjustment');
+		button.disabled = false;
+		button.textContent = 'Save';
 		alert(error.message || error);
 	}
 </script>
