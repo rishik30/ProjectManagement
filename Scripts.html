@@ -808,7 +808,7 @@
 			changeSet.removed.forEach((item) => {
 				const product = setupProducts.find((p) => p.id === item.productId);
 
-				totalDeletedMoulds += Number(originalMap[item.productId]);
+				totalDeletedMoulds += Number(item.mould);
 				message += `${product.name}\n`;
 			});
 
