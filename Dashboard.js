@@ -637,6 +637,19 @@ function updateSummaryTable(sheet, summary, config) {
 
 	sheet.getRange(startRow + 2, startCol, values.length, 2).setValues(values);
 
+	const total = summary.reduce(
+		(sum, item) => sum + Number(item[config.valueField] || 0),
+		0,
+	);
+
+	const totalRow = startRow + 2 + values.length;
+
+	sheet
+		.getRange(totalRow, startCol, 1, 2)
+		.setValues([['Total', total]])
+		.setFontWeight('bold')
+		.setBackground('#E8F0FE');
+
 	sheet
 		.getRange(startRow + 2, startCol + 1, values.length, 1)
 		.setNumberFormat('#,##0');
