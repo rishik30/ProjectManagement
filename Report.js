@@ -127,6 +127,26 @@ function generateSummaryReport(config) {
 		}),
 	);
 
+	/*
+	 * Append Grand Total Row
+	 */
+	const totalRow = config.columns.map((column) => {
+		if (column.field === config.columns[0].field) {
+			return 'Total';
+		}
+
+		if (column.field === config.valueField) {
+			return summary.reduce(
+				(sum, item) => sum + Number(item[config.valueField] || 0),
+				0,
+			);
+		}
+
+		return '';
+	});
+
+	values.push(totalRow);
+
 	const sheet = getReportSheet();
 
 	clearReportSheet(sheet);
@@ -180,6 +200,11 @@ function formatSummaryReport(sheet, rowCount, totalColumns, numberColumns) {
 	sheet
 		.getRange(5, 1, rowCount, totalColumns)
 		.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY);
+
+	sheet
+		.getRange(4 + rowCount, 1, 1, totalColumns)
+		.setFontWeight('bold')
+		.setBackground('#E8F0FE');
 }
 
 /**
