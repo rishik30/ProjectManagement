@@ -594,7 +594,7 @@ function updateSummaryTable(sheet, summary, config) {
 	const startRow = config.startRow;
 	const startCol = config.startColumn;
 
-	sheet.getRange(startRow, startCol, 1000, 2).clearContent();
+	sheet.getRange(startRow, startCol, 1000, 2).clear();
 
 	sheet
 		.getRange(startRow, startCol, 1, 2)
