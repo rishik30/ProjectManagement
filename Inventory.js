@@ -174,44 +174,96 @@ function postSalesStock(sale) {
 function postStockAdjustment(adjustment) {
 	validateStockAdjustment(adjustment);
 
+	const product = getProductInfo(adjustment.productId);
 	const quantity = Number(adjustment.quantity);
 
 	const qtyIn = quantity > 0 ? quantity : 0;
 	const qtyOut = quantity < 0 ? Math.abs(quantity) : 0;
 
-	const ledgerRows = [
-		{
-			date: adjustment.date,
-			transactionType: INVENTORY_TRANSACTION_TYPES.ADJUSTMENT,
-			referenceId: null,
-			productId: adjustment.productId,
-			productName: adjustment.productName,
-			qtyIn,
-			qtyOut,
-			toStage: adjustment.stage || INVENTORY_STAGES.PACKED,
-			remarks: adjustment.remarks || '',
-		},
-	];
+	const ledgerRows = [];
+	const stockChanges = {};
+	const stageChanges = [];
 
-	const stockChanges = {
-		[adjustment.productId]: {
-			productName: adjustment.productName,
-			quantity,
-		},
+	ledgerRows.push({
+		date: adjustment.date,
+		transactionType: INVENTORY_TRANSACTION_TYPES.ADJUSTMENT,
+		referenceId: null,
+		productId: adjustment.productId,
+		productName: adjustment.productName,
+		qtyIn,
+		qtyOut,
+		toStage: adjustment.stage || INVENTORY_STAGES.PACKED,
+		remarks: adjustment.remarks || '',
+	});
+
+	stockChanges[adjustment.productId] = {
+		productName: adjustment.productName,
+		quantity,
 	};
+
+	stageChanges.push({
+		productId: adjustment.productId,
+		productName: adjustment.productName,
+		stage: adjustment.stage || INVENTORY_STAGES.PACKED,
+		quantity,
+	});
+
+	/**
+	 * Bundle stock handling
+	 */
+	if (
+		product.productType.toLowerCase() === 'bundle' &&
+		quantity < 0 &&
+		(adjustment.stage || INVENTORY_STAGES.PACKED) === INVENTORY_STAGES.PACKED
+	) {
+		const bundlesPerBox = product.packetsPerBox;
+		const components = getBundleComponents(product.id);
+
+		components.forEach((component) => {
+			const componentProduct = getProductInfo(component.productId);
+
+			const restoreQty =
+				Math.abs(quantity) * bundlesPerBox * Number(component.quantity);
+
+			const restoreStage = componentProduct.requiresPainting
+				? INVENTORY_STAGES.PAINTED
+				: INVENTORY_STAGES.LOOSE;
+
+			ledgerRows.push({
+				date: adjustment.date,
+				transactionType: INVENTORY_TRANSACTION_TYPES.ADJUSTMENT,
+				referenceId: null,
+				productId: component.productId,
+				productName: componentProduct.name,
+				qtyIn: restoreQty,
+				qtyOut: 0,
+				toStage: restoreStage,
+				remarks: 'Bundle opened. ' + (adjustment.remarks || ''),
+			});
+
+			stageChanges.push({
+				productId: component.productId,
+				productName: componentProduct.name,
+				stage: restoreStage,
+				quantity: restoreQty,
+			});
+
+			if (!stockChanges[component.productId]) {
+				stockChanges[component.productId] = {
+					productName: componentProduct.name,
+					quantity: 0,
+				};
+			}
+
+			stockChanges[component.productId].quantity += restoreQty;
+		});
+	}
 
 	try {
 		appendLedgerRows(ledgerRows);
 
 		updateCurrentStockBatch(stockChanges);
-		updateStageStockBatch([
-			{
-				productId: adjustment.productId,
-				productName: adjustment.productName,
-				stage: adjustment.stage || INVENTORY_STAGES.PACKED,
-				quantity,
-			},
-		]);
+		updateStageStockBatch(stageChanges);
 
 		return JSON.parse(
 			JSON.stringify({
