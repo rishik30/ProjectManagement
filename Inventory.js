@@ -518,6 +518,7 @@ function getProductCatalog() {
 			name: row[columns.name],
 			requiresPainting: isPaintingRequired(row[columns.requiresPainting]),
 			productType: String(row[columns.productType] || 'Standard'),
+			packetsPerBox: Number(row[columns.packetsPerBox] || 1),
 			piecesPerBox: Math.max(
 				1,
 				Number(row[columns.piecesPerPacket] || 1) *
@@ -569,7 +570,9 @@ function saveBundleBom(data) {
 	return withInventoryLock(() => {
 		const products = getProductCatalog();
 		const byId = {};
-		products.forEach((product) => { byId[product.id] = product; });
+		products.forEach((product) => {
+			byId[product.id] = product;
+		});
 		const bundle = byId[data.bundleId];
 		if (!bundle || bundle.productType.toLowerCase() !== 'bundle') {
 			throw new Error('The selected product is not an active bundle SKU.');
@@ -588,13 +591,20 @@ function saveBundleBom(data) {
 				throw new Error('Component quantity must be greater than zero.');
 			}
 			componentIds.add(product.id);
-			return [bundle.id, bundle.name, product.id, product.name, Number(component.quantity)];
+			return [
+				bundle.id,
+				bundle.name,
+				product.id,
+				product.name,
+				Number(component.quantity),
+			];
 		});
 
 		const sheet = getSheet(SHEETS.BUNDLE_BOM);
-		const existing = sheet.getLastRow() > 1
-			? sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues()
-			: [];
+		const existing =
+			sheet.getLastRow() > 1
+				? sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues()
+				: [];
 		const retained = existing.filter((row) => row[0] !== bundle.id);
 		const rows = retained.concat(components);
 
@@ -890,7 +900,8 @@ function postPackingUnsafe(data) {
 		const sourceStage = componentProduct.requiresPainting
 			? INVENTORY_STAGES.PAINTED
 			: INVENTORY_STAGES.LOOSE;
-		const required = Number(component.quantity) * boxes;
+		const bundlesPerBox = product.packetsPerBox;
+		const required = Number(component.quantity) * bundlesPerBox * boxes;
 		changes.push({
 			productId: component.productId,
 			productName: componentProduct.name,
