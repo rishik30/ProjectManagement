@@ -74,7 +74,7 @@ const DASHBOARD = {
 			key: 'totalBags',
 			title: 'Total Bags',
 			cell: 'C13',
-			decimals: 0,
+			decimals: 1,
 		},
 
 		{
