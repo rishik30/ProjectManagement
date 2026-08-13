@@ -294,11 +294,6 @@ function rebuildCurrentStock() {
 
 		const productId = row[4];
 		const productName = row[5];
-		const status = row[8];
-
-		if (status !== 'Active') {
-			continue;
-		}
 
 		const qtyIn = Number(row[6] || 0);
 		const qtyOut = Number(row[7] || 0);
