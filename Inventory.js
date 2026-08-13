@@ -678,20 +678,8 @@ function migrateProductionToInventory() {
 	}
 }
 
-/**
- * One-time repair for historical production inventory mismatches.
- *
- * Reconciles the active Stock Ledger quantity against the
- * current Production Detail quantity for the specified entries.
- *
- * DO NOT run this more than once for the same entries.
- */
-function repairHistoricalProductionInventory() {
-	const productionIds = [
-		'TXN-20260807-0002',
-		'TXN-20260812-0001',
-		'TXN-20260813-0001',
-	];
+function repairProduction130001() {
+	const productionId = 'TXN-20260813-0001';
 
 	const detailSheet = getSheet(SHEETS.DAILY_DETAIL);
 	const ledgerSheet = getSheet(SHEETS.STOCK_LEDGER);
@@ -699,156 +687,123 @@ function repairHistoricalProductionInventory() {
 	const detailValues = detailSheet.getDataRange().getValues();
 	const ledgerValues = ledgerSheet.getDataRange().getValues();
 
-	if (detailValues.length <= 1) {
-		throw new Error('Production Detail contains no data.');
-	}
-
-	if (ledgerValues.length <= 1) {
-		throw new Error('Stock Ledger contains no data.');
-	}
-
-	const detailHeaders = detailValues[0];
-
-	const detailEntryIndex = detailHeaders.indexOf('Entry ID');
-	const detailProductIdIndex = detailHeaders.indexOf('Product ID');
-	const detailProductNameIndex = detailHeaders.indexOf('Product Name');
-	const detailPiecesIndex = detailHeaders.indexOf('Pieces');
-
-	if (
-		detailEntryIndex === -1 ||
-		detailProductIdIndex === -1 ||
-		detailProductNameIndex === -1 ||
-		detailPiecesIndex === -1
-	) {
-		throw new Error('Required Production Detail columns not found.');
-	}
-
 	/*
-	 * Build the target quantity from Production Detail.
-	 *
-	 * {
-	 *   entryId: {
-	 *     productId: {
-	 *       productName,
-	 *       quantity
-	 *     }
-	 *   }
-	 * }
+	 * -------------------------------------------------------
+	 * 1. Get current Production Detail quantities
+	 * -------------------------------------------------------
 	 */
+
 	const productionTotals = {};
 
-	detailValues.slice(1).forEach((row) => {
-		const entryId = String(row[detailEntryIndex] || '');
+	for (let i = 1; i < detailValues.length; i++) {
+		const row = detailValues[i];
 
-		if (!productionIds.includes(entryId)) {
-			return;
+		if (String(row[0]) !== productionId) {
+			continue;
 		}
 
-		const productId = row[detailProductIdIndex];
-		const productName = row[detailProductNameIndex];
-		const quantity = Number(row[detailPiecesIndex] || 0);
+		const productId = row[1];
+		const productName = row[2];
+		const pieces = Number(row[4] || 0);
 
-		if (!productionTotals[entryId]) {
-			productionTotals[entryId] = {};
-		}
-
-		if (!productionTotals[entryId][productId]) {
-			productionTotals[entryId][productId] = {
+		if (!productionTotals[productId]) {
+			productionTotals[productId] = {
 				productName,
 				quantity: 0,
 			};
 		}
 
-		productionTotals[entryId][productId].quantity += quantity;
-	});
+		productionTotals[productId].quantity += pieces;
+	}
 
 	/*
-	 * Calculate the currently active inventory balance
-	 * already represented in the Stock Ledger.
+	 * -------------------------------------------------------
+	 * 2. Calculate what the Stock Ledger currently contains
+	 * -------------------------------------------------------
+	 *
+	 * IMPORTANT:
+	 * Include both Cancelled and Active rows.
+	 * A cancelled transaction is offset by its reversal.
 	 */
+
 	const ledgerTotals = {};
 
 	for (let i = 1; i < ledgerValues.length; i++) {
 		const row = ledgerValues[i];
 
-		const entryId = String(row[3] || '');
-
-		if (!productionIds.includes(entryId)) {
-			continue;
-		}
-
-		if (row[8] !== 'Active') {
+		if (String(row[3]) !== productionId) {
 			continue;
 		}
 
 		const productId = row[4];
+
 		const qtyIn = Number(row[6] || 0);
 		const qtyOut = Number(row[7] || 0);
 
-		if (!ledgerTotals[entryId]) {
-			ledgerTotals[entryId] = {};
+		if (!ledgerTotals[productId]) {
+			ledgerTotals[productId] = 0;
 		}
 
-		if (!ledgerTotals[entryId][productId]) {
-			ledgerTotals[entryId][productId] = 0;
-		}
-
-		ledgerTotals[entryId][productId] += qtyIn - qtyOut;
+		ledgerTotals[productId] += qtyIn - qtyOut;
 	}
 
-	const repairRows = [];
+	/*
+	 * -------------------------------------------------------
+	 * 3. Calculate the correction required
+	 * -------------------------------------------------------
+	 */
+
+	const ledgerRows = [];
 	const stockChanges = {};
 
-	productionIds.forEach((entryId) => {
-		const targetProducts = productionTotals[entryId] || {};
-		const currentProducts = ledgerTotals[entryId] || {};
+	Object.entries(productionTotals).forEach(([productId, production]) => {
+		const currentLedgerQty = Number(ledgerTotals[productId] || 0);
 
-		Object.entries(targetProducts).forEach(([productId, target]) => {
-			const currentQuantity = Number(currentProducts[productId] || 0);
+		const difference = production.quantity - currentLedgerQty;
 
-			const difference = Number(target.quantity) - currentQuantity;
+		if (difference === 0) {
+			return;
+		}
 
-			if (difference === 0) {
-				return;
-			}
-
-			repairRows.push({
-				date: new Date(),
-				transactionType: 'Production Correction',
-				referenceId: entryId,
-				productId,
-				productName: target.productName,
-				qtyIn: difference > 0 ? difference : 0,
-				qtyOut: difference < 0 ? Math.abs(difference) : 0,
-				remarks: 'Historical production inventory reconciliation',
-			});
-
-			if (!stockChanges[productId]) {
-				stockChanges[productId] = {
-					productName: target.productName,
-					quantity: 0,
-				};
-			}
-
-			stockChanges[productId].quantity += difference;
+		ledgerRows.push({
+			date: new Date(),
+			transactionType: 'Production Correction',
+			referenceId: productionId,
+			productId,
+			productName: production.productName,
+			qtyIn: difference > 0 ? difference : 0,
+			qtyOut: difference < 0 ? Math.abs(difference) : 0,
+			status: 'Active',
+			remarks: 'Historical production inventory correction',
 		});
+
+		stockChanges[productId] = {
+			productName: production.productName,
+			quantity: difference,
+		};
 	});
 
-	if (repairRows.length === 0) {
+	if (ledgerRows.length === 0) {
 		return {
 			success: true,
-			message: 'No inventory differences found.',
+			message: 'No correction required.',
 		};
 	}
 
-	appendLedgerRows(repairRows);
+	/*
+	 * -------------------------------------------------------
+	 * 4. Post correction
+	 * -------------------------------------------------------
+	 */
+
+	appendLedgerRows(ledgerRows);
 
 	updateCurrentStockBatch(stockChanges);
 
 	return {
 		success: true,
-		repairedEntries: productionIds,
-		ledgerRowsAdded: repairRows.length,
+		productionId,
+		ledgerRowsAdded: ledgerRows.length,
 		stockChanges,
 	};
 }
