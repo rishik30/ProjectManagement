@@ -122,19 +122,25 @@ function generateEntryId(productionDate) {
 		'yyyyMMdd',
 	);
 
-	let count = 0;
+	const prefix = `TXN-${targetDate}-`;
+
+	let maxSequence = 0;
 
 	for (let i = 1; i < values.length; i++) {
-		const entryId = values[i][0];
+		const entryId = String(values[i][0] || '');
 
-		if (entryId && entryId.indexOf('TXN-' + targetDate) === 0) {
-			count++;
+		if (!entryId.startsWith(prefix)) {
+			continue;
+		}
+
+		const sequence = Number(entryId.substring(prefix.length));
+
+		if (Number.isInteger(sequence) && sequence > maxSequence) {
+			maxSequence = sequence;
 		}
 	}
 
-	const runningNumber = String(count + 1).padStart(4, '0');
-
-	return `TXN-${targetDate}-${runningNumber}`;
+	return `${prefix}${String(maxSequence + 1).padStart(4, '0')}`;
 }
 
 /**
@@ -380,12 +386,12 @@ function updateProduction(entryId, data) {
 		lock.waitLock(20000);
 
 		try {
+			// Reverse previous inventory posting
+			reverseTransaction(entryId, 'Production Updated');
+
 			// Update Production
 			updateHeader(entryId, data);
 			updateDetails(entryId, data);
-
-			// Reverse previous inventory posting
-			reverseTransaction(entryId, 'Production Updated');
 
 			// Post updated inventory
 			const inventory = buildProductionInventoryData(entryId, data);
