@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+	<head>
+		<base target="_top" />
+		<?!= include('Styles'); ?>
+	</head>
+	<body>
+		<div class="header"><h2>Bundle BOM</h2></div>
+		<div class="section">
+			<label>Bundle SKU</label>
+			<select id="bundleSelect">
+				<option value="">Loading bundles…</option>
+			</select>
+			<div class="empty" style="margin-top: 8px">
+				Create the bundle SKU in Product_Master first, with Product Type set to
+				Bundle.
+			</div>
+		</div>
+		<div class="section">
+			<div class="section-title">Components per bundle</div>
+			<div id="components"><div class="empty">Select a bundle SKU.</div></div>
+			<div class="button-container">
+				<button type="button" id="addComponent" class="secondary-btn">
+					Add Component
+				</button>
+			</div>
+		</div>
+		<div class="button-container">
+			<button id="saveBom" class="primary-btn">Save BOM</button>
+			<button id="resetBom" class="secondary-btn">Reset</button>
+		</div>
+		<?!= include('BundleBomScripts'); ?>
+	</body>
+</html>

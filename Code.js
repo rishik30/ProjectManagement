@@ -30,6 +30,7 @@ const SHEETS = {
 	REPORT: 'Report',
 	STOCK_LEDGER: 'StockLedger',
 	CURRENT_STOCK: 'CurrentStock',
+	BUNDLE_BOM: 'Bundle_BOM',
 };
 
 const SIDEBAR = {

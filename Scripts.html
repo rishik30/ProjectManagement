@@ -784,7 +784,7 @@
 				message += `${product.name} (Mould ${item.mould})\n`;
 			});
 
-			message += 'Total Added Moulds: ' + totalAddedMoulds + '\n';
+			message += 'Total Added Moulds: ' + totalAddedMoulds + '\n\n';
 		}
 
 		if (changeSet.updated.length) {
@@ -798,7 +798,7 @@
 				message += `${product.name} (${item.oldMould} → ${item.newMould})\n`;
 			});
 
-			message += 'Total Updated Moulds: ' + totalUpdatedMoulds + '\n';
+			message += 'Total Updated Moulds: ' + totalUpdatedMoulds + '\n\n';
 		}
 
 		if (changeSet.removed.length) {
@@ -812,7 +812,7 @@
 				message += `${product.name}\n`;
 			});
 
-			message += 'Total Deleted Moulds: ' + totalDeletedMoulds + '\n';
+			message += 'Total Deleted Moulds: ' + totalDeletedMoulds + '\n\n';
 		}
 
 		if (

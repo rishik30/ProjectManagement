@@ -361,6 +361,15 @@ function submitProduction(data) {
 
 			updateCurrentStockBatch(inventory.stockChanges);
 
+			updateStageStockBatch(
+				Object.entries(inventory.stockChanges).map(([productId, stock]) => ({
+					productId,
+					productName: stock.productName,
+					stage: INVENTORY_STAGES.LOOSE,
+					quantity: stock.quantity,
+				})),
+			);
+
 			return {
 				success: true,
 				duplicate: false,
@@ -397,6 +406,12 @@ function updateProduction(entryId, data) {
 			const inventory = buildProductionInventoryData(entryId, data);
 			appendLedgerRows(inventory.ledgerRows);
 			updateCurrentStockBatch(inventory.stockChanges);
+			updateStageStockBatch(
+				Object.entries(inventory.stockChanges).map(([productId, stock]) => ({
+					productId, productName: stock.productName,
+					stage: INVENTORY_STAGES.LOOSE, quantity: stock.quantity,
+				})),
+			);
 
 			return {
 				success: true,

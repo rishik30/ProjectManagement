@@ -1,0 +1,108 @@
+<script>
+	let bundles = [];
+	let componentProducts = [];
+	let bomByBundle = {};
+
+	document.addEventListener('DOMContentLoaded', init);
+	function init() {
+		document
+			.getElementById('bundleSelect')
+			.addEventListener('change', loadSelectedBom);
+		document
+			.getElementById('addComponent')
+			.addEventListener('click', () => addComponent());
+		document.getElementById('saveBom').addEventListener('click', saveBom);
+		document
+			.getElementById('resetBom')
+			.addEventListener('click', loadSelectedBom);
+		google.script.run
+			.withSuccessHandler(loadForm)
+			.withFailureHandler(showError)
+			.getBundleBomFormData();
+	}
+	function loadForm(data) {
+		bundles = data.bundles;
+		componentProducts = data.components;
+		bomByBundle = data.bomByBundle;
+		const select = document.getElementById('bundleSelect');
+		select.innerHTML = '<option value="">Select bundle SKU</option>';
+		bundles.forEach((bundle) => {
+			const option = document.createElement('option');
+			option.value = bundle.id;
+			option.textContent = bundle.name;
+			select.appendChild(option);
+		});
+		if (!bundles.length)
+			document.getElementById('components').innerHTML =
+				'<div class="empty">No active Bundle products found.</div>';
+	}
+	function loadSelectedBom() {
+		const bundleId = document.getElementById('bundleSelect').value;
+		const components = bomByBundle[bundleId] || [];
+		const container = document.getElementById('components');
+		container.innerHTML = '';
+		if (!bundleId) {
+			container.innerHTML = '<div class="empty">Select a bundle SKU.</div>';
+			return;
+		}
+		if (!components.length) addComponent();
+		else components.forEach((component) => addComponent(component));
+	}
+	function addComponent(component = {}) {
+		const container = document.getElementById('components');
+		container.querySelector('.empty')?.remove();
+		const row = document.createElement('div');
+		row.className = 'product-card bom-row';
+		row.innerHTML =
+			'<div class="section"><label>Component</label><select class="componentProduct"><option value="">Select product</option></select></div><div class="section"><label>Quantity per bundle</label><input class="componentQuantity" type="number" min="1" step="1" value="' +
+			(component.quantity || '') +
+			'"></div><button type="button" class="remove-product-btn">Remove</button>';
+		const select = row.querySelector('.componentProduct');
+		componentProducts.forEach((product) => {
+			const option = document.createElement('option');
+			option.value = product.id;
+			option.textContent = product.name;
+			if (product.id === component.productId) option.selected = true;
+			select.appendChild(option);
+		});
+		row.querySelector('.remove-product-btn').addEventListener('click', () => {
+			row.remove();
+			if (!container.children.length)
+				container.innerHTML = '<div class="empty">No components added.</div>';
+		});
+		container.appendChild(row);
+	}
+	function saveBom() {
+		const bundleId = document.getElementById('bundleSelect').value;
+		const components = [...document.querySelectorAll('.bom-row')].map(
+			(row) => ({
+				productId: row.querySelector('.componentProduct').value,
+				quantity: Number(row.querySelector('.componentQuantity').value),
+			}),
+		);
+		if (!bundleId) return alert('Select a bundle SKU.');
+		if (
+			!components.length ||
+			components.some((item) => !item.productId || item.quantity <= 0)
+		)
+			return alert('Select every component and enter a positive quantity.');
+		const button = document.getElementById('saveBom');
+		button.disabled = true;
+		button.textContent = 'Saving...';
+		google.script.run
+			.withSuccessHandler(() => {
+				button.disabled = false;
+				button.textContent = 'Save BOM';
+				bomByBundle[bundleId] = components;
+				alert('Bundle BOM saved.');
+			})
+			.withFailureHandler(showError)
+			.saveBundleBom({ bundleId, components });
+	}
+	function showError(error) {
+		const button = document.getElementById('saveBom');
+		button.disabled = false;
+		button.textContent = 'Save BOM';
+		alert(error.message || error);
+	}
+</script>
