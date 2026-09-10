@@ -25,12 +25,20 @@ function onOpen() {
 
 		.addItem('Dashboard', 'openDashboard')
 
+		.addItem('Sales Dashboard', 'openSalesDashboard')
+
 		.addSubMenu(
 			ui
 				.createMenu('Reports')
 				.addItem('Product Report', 'generateProductReport')
 				.addItem('Machine Report', 'generateMachineReport')
-				.addItem('Daily Report', 'generateDailyReport'),
+				.addItem('Daily Report', 'generateDailyReport')
+				.addSubMenu(
+					ui
+						.createMenu('Sales Reports')
+						.addItem('Sales Summary', 'generateSalesSummaryReport')
+						.addItem('Sales Order Details', 'generateSalesOrderDetailReport'),
+				),
 		)
 
 		.addSeparator()

@@ -10,4 +10,5 @@ function onEdit(e) {
 	}
 
 	handleDashboardEdit(e);
+	handleSalesDashboardEdit(e);
 }
