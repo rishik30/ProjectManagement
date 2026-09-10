@@ -48,5 +48,7 @@ function getSalesFormData() {
 		customers: getActiveCustomers(),
 
 		products: getActiveProducts(),
+
+		stock: getCurrentStockMap(),
 	};
 }
