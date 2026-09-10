@@ -1,6 +1,8 @@
 <script>
 	let customers = [];
 	let products = [];
+	let currentStock = {};
+	let originalSale = null;
 
 	let editingSalesId = '';
 
@@ -22,6 +24,10 @@
 		document
 			.getElementById('btnAddProduct')
 			.addEventListener('click', addProductCard);
+
+		document
+			.getElementById('btnRefreshStock')
+			.addEventListener('click', refreshStock);
 
 		document.getElementById('btnSaveSale').addEventListener('click', saveSale);
 
@@ -66,11 +72,13 @@
 
 		customers = data.customers;
 		products = data.products;
+		currentStock = data.stock || {};
 
 		console.log('Customers:', customers.length);
 		console.log('Products:', products.length);
 
 		populateCustomerDropdown();
+		updateStockIndicators();
 	}
 
 	function populateCustomerDropdown() {
@@ -172,6 +180,8 @@
 				readonly
 				value="${product.pieces || ''}">
 		</div>
+
+		<div class="stock-info" aria-live="polite">Select a product to view available stock.</div>
 	`;
 
 		populateProductDropdown(
@@ -225,6 +235,8 @@
 				} else {
 					updateCardNumbers();
 				}
+
+				updateStockIndicators();
 			});
 
 		card
@@ -275,6 +287,7 @@
 
 		if (!productId || quantity <= 0) {
 			piecesInput.value = '';
+			updateStockIndicators();
 			return;
 		}
 
@@ -282,6 +295,7 @@
 
 		if (!product) {
 			piecesInput.value = '';
+			updateStockIndicators();
 			return;
 		}
 
@@ -308,6 +322,67 @@
 		}
 
 		piecesInput.value = pieces;
+		updateStockIndicators();
+	}
+
+	function refreshStock() {
+		const button = document.getElementById('btnRefreshStock');
+		button.disabled = true;
+		button.textContent = 'Refreshing...';
+		google.script.run
+			.withSuccessHandler((stock) => {
+				currentStock = stock || {};
+				button.disabled = false;
+				button.textContent = 'Refresh Stock';
+				updateStockIndicators();
+			})
+			.withFailureHandler((error) => {
+				button.disabled = false;
+				button.textContent = 'Refresh Stock';
+				showError(error);
+			})
+			.getCurrentStockMap();
+	}
+
+	function updateStockIndicators() {
+		const cards = Array.from(document.querySelectorAll('.product-card'));
+		const requestedByProduct = {};
+
+		cards.forEach((card) => {
+			const productId = card.querySelector('.productSelect').value;
+			const pieces = Number(card.querySelector('.piecesInput').value) || 0;
+			if (productId) {
+				requestedByProduct[productId] =
+					(requestedByProduct[productId] || 0) + pieces;
+			}
+		});
+
+		cards.forEach((card) => {
+			const productId = card.querySelector('.productSelect').value;
+			const stockInfo = card.querySelector('.stock-info');
+			if (!productId) {
+				stockInfo.textContent = 'Select a product to view available stock.';
+				stockInfo.style.color = '#666666';
+				return;
+			}
+
+			let available = Number(currentStock[productId] || 0);
+			if (originalSale) {
+				originalSale.products
+					.filter((product) => product.productId === productId)
+					.forEach((product) => {
+						available += Number(product.pieces || 0);
+					});
+			}
+
+			const requested = Number(requestedByProduct[productId] || 0);
+			const remaining = available - requested;
+			stockInfo.textContent =
+				'Available: ' + available.toLocaleString() +
+				' pcs | This sale: ' + requested.toLocaleString() +
+				' pcs | After sale: ' + remaining.toLocaleString() + ' pcs';
+			stockInfo.style.color = remaining < 0 ? '#b71c1c' : '#2e7d32';
+		});
 	}
 
 	function collectSaleData() {
@@ -423,12 +498,15 @@
 		alert('Sale saved successfully.\n\n' + 'Sales ID : ' + result.salesId);
 
 		clearSalesForm();
+		refreshStock();
 
 		searchSales();
 	}
 
 	function clearSalesForm() {
 		document.getElementById('salesMode').value = 'ADD';
+
+		originalSale = null;
 
 		document.getElementById('editingSalesId').value = '';
 
@@ -492,7 +570,12 @@
 	}
 
 	function searchSales() {
-		const searchText = document.getElementById('searchSalesId').value.trim();
+		const criteria = {
+			salesId: document.getElementById('searchSalesId').value.trim(),
+			customerId: document.getElementById('searchCustomer').value,
+			fromDate: document.getElementById('searchFromDate').value,
+			toDate: document.getElementById('searchToDate').value,
+		};
 
 		const btn = document.getElementById('searchSalesBtn');
 
@@ -513,7 +596,7 @@
 
 				showError(err);
 			})
-			.searchSales(searchText);
+			.searchSales(criteria);
 	}
 
 	function renderSearchResults(results) {
@@ -607,6 +690,8 @@
 
 		document.getElementById('salesDate').value = sale.date;
 
+		originalSale = sale;
+
 		document.getElementById('customerSelect').value = sale.customerId;
 
 		document.getElementById('salesRemarks').value = sale.remarks || '';
@@ -618,6 +703,8 @@
 		sale.products.forEach((product) => {
 			addProductCard(product);
 		});
+
+		updateStockIndicators();
 
 		document.getElementById('btnSaveSale').textContent = 'Update';
 

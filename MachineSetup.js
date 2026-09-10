@@ -94,6 +94,40 @@ function getHistorySheet() {
 	return getSheet(SHEETS.MACHINE_HISTORY);
 }
 
+function getCurrentMachineConfigurationMetrics() {
+	const sheet = getConfigurationSheet();
+
+	const values = sheet.getDataRange().getValues();
+
+	if (values.length <= 1) {
+		return {
+			totalMoulds: 0,
+			uniqueMoulds: 0,
+		};
+	}
+
+	let totalMoulds = 0;
+	const products = new Set();
+
+	for (let i = 1; i < values.length; i++) {
+		const machineId = values[i][0];
+		const productId = values[i][1];
+		const mould = Number(values[i][2] || 0);
+
+		if (!machineId || !productId) {
+			continue;
+		}
+
+		totalMoulds += mould;
+		products.add(productId);
+	}
+
+	return {
+		totalMoulds,
+		uniqueMoulds: products.size,
+	};
+}
+
 function applyRemovedProducts(machineId, removed) {
 	if (removed.length === 0) {
 		return;
