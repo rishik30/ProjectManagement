@@ -191,8 +191,8 @@ function calculateKPIs(dataset) {
 		activeMachines: 0,
 		avgPiecesPerBag: 0,
 		avgPiecesPerRound: 0,
-		uniqueProducts: 0,
-		uniqueDies: 0,
+		totalMoulds: 0,
+		uniqueMouldSizes: 0,
 		highestProductionDate: null,
 		highestProductionPieces: 0,
 		lowestProductionDate: null,
@@ -226,17 +226,18 @@ function calculateKPIs(dataset) {
 		kpi.avgPiecesPerRound = kpi.totalPieces / kpi.totalRounds;
 	}
 
-	const productSet = new Set();
-	const dieMap = {};
+	const mouldByProduct = {};
 
 	dataset.forEach((record) => {
-		productSet.add(record.productId);
-		if (!dieMap[record.productId]) {
-			dieMap[record.productId] = record.mould;
+		if (
+			!Object.prototype.hasOwnProperty.call(mouldByProduct, record.productId)
+		) {
+			mouldByProduct[record.productId] = Number(record.mould || 0);
 		}
 	});
-	kpi.uniqueProducts = productSet.size;
-	kpi.uniqueDies = Object.values(dieMap).reduce((sum, mould) => sum + mould, 0);
+	const mouldCounts = Object.values(mouldByProduct);
+	kpi.totalMoulds = mouldCounts.reduce((sum, mould) => sum + mould, 0);
+	kpi.uniqueMouldSizes = Object.keys(mouldByProduct).size;
 
 	const { highest, lowest } = getHighestAndLowestProductionData(dataset);
 	if (highest) {

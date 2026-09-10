@@ -40,6 +40,9 @@ function refreshDashboard() {
 }
 
 function buildDashboardLayout(sheet) {
+	// Remove all existing merged cells before rebuilding the layout
+	sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
+
 	sheet.clear();
 
 	sheet.setHiddenGridlines(true);
@@ -51,6 +54,8 @@ function buildDashboardLayout(sheet) {
 	applyDashboardValidation(sheet);
 
 	buildKpiSection(sheet);
+
+	buildConfigurationSection(sheet);
 }
 
 function buildDashboardTitle(sheet) {
@@ -245,6 +250,45 @@ function buildKpiSection(sheet) {
 	});
 }
 
+function buildConfigurationSection(sheet) {
+	const layout = DASHBOARD_LAYOUT.CONFIGURATION;
+
+	sheet
+		.getRange(layout.TITLE_ROW, layout.TITLE_COLUMN, 1, layout.TITLE_WIDTH)
+		.merge()
+		.setValue('Current Machine Configuration')
+		.setFontWeight('bold')
+		.setFontSize(14)
+		.setHorizontalAlignment('center');
+
+	buildConfigurationCard(sheet, 'Total Moulds', layout.TOTAL_MOULDS);
+
+	buildConfigurationCard(sheet, 'Unique Moulds', layout.UNIQUE_MOULDS);
+}
+
+function buildConfigurationCard(sheet, title, layout) {
+	sheet
+		.getRange(layout.ROW, layout.COLUMN, 1, layout.WIDTH)
+		.merge()
+		.setValue(title)
+		.setFontWeight('bold')
+		.setHorizontalAlignment('center')
+		.setBackground('#E8F0FE');
+
+	sheet
+		.getRange(layout.ROW + 1, layout.COLUMN, layout.HEIGHT - 1, layout.WIDTH)
+		.merge()
+		.setValue('-')
+		.setFontSize(18)
+		.setFontWeight('bold')
+		.setHorizontalAlignment('center')
+		.setVerticalAlignment('middle');
+
+	sheet
+		.getRange(layout.ROW, layout.COLUMN, layout.HEIGHT, layout.WIDTH)
+		.setBorder(true, true, true, true, true, true);
+}
+
 function buildKpiCard(sheet, title, startCell) {
 	const range = sheet.getRange(startCell);
 
@@ -358,6 +402,28 @@ function updateKpiSection(sheet, kpi) {
 	});
 }
 
+function updateConfigurationSection(sheet, configuration) {
+	const layout = DASHBOARD_LAYOUT.CONFIGURATION;
+
+	const totalMouldsRange = sheet.getRange(
+		layout.TOTAL_MOULDS.ROW + 1,
+		layout.TOTAL_MOULDS.COLUMN,
+		layout.TOTAL_MOULDS.HEIGHT - 1,
+		layout.TOTAL_MOULDS.WIDTH,
+	);
+
+	const uniqueMouldsRange = sheet.getRange(
+		layout.UNIQUE_MOULDS.ROW + 1,
+		layout.UNIQUE_MOULDS.COLUMN,
+		layout.UNIQUE_MOULDS.HEIGHT - 1,
+		layout.UNIQUE_MOULDS.WIDTH,
+	);
+
+	totalMouldsRange.setValue(configuration.totalMoulds);
+
+	uniqueMouldsRange.setValue(configuration.uniqueMoulds);
+}
+
 function testDashboardLayout() {
 	const sheet = getSheet(SHEETS.DASHBOARD);
 	ensureDashboardInfrastructure(sheet);
@@ -454,8 +520,10 @@ function refreshDashboardData(sheet, filters) {
 
 		const dataset = getProductionDataset(filters);
 		const kpi = calculateKPIs(dataset);
+		const configuration = getCurrentMachineConfigurationMetrics();
 
 		updateKpiSection(sheet, kpi);
+		updateConfigurationSection(sheet, configuration);
 		updateProductionHighlights(sheet, kpi);
 
 		updateSummaryTable(
@@ -594,7 +662,15 @@ function updateSummaryTable(sheet, summary, config) {
 	const startRow = config.startRow;
 	const startCol = config.startColumn;
 
-	sheet.getRange(startRow, startCol, 1000, 2).clear();
+	const clearRange = sheet.getRange(startRow, startCol, 1000, 2);
+
+	const mergedRanges = clearRange.getMergedRanges();
+
+	mergedRanges.forEach((range) => {
+		range.breakApart();
+	});
+
+	clearRange.clear();
 
 	sheet
 		.getRange(startRow, startCol, 1, 2)

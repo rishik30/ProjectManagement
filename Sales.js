@@ -203,7 +203,7 @@ function getSale(salesId) {
 		return JSON.parse(
 			JSON.stringify({
 				id: header[0],
-				date: header[1],
+				date: formatSalesDateForInput(header[1]),
 				customerId: header[2],
 				customerName: header[3],
 				remarks: header[4],
@@ -222,28 +222,41 @@ function getSale(salesId) {
  * @param {string} searchText
  * @returns {Array}
  */
-function searchSales(searchText = '') {
+function searchSales(criteria = {}) {
 	try {
 		const sheet = getSheet(SHEETS.SALES_HEADER);
 
 		const data = sheet.getDataRange().getValues();
 
-		searchText = String(searchText).toLowerCase().trim();
+		if (typeof criteria === 'string') {
+			criteria = { salesId: criteria };
+		}
+
+		const salesId = String(criteria.salesId || '').toLowerCase().trim();
+		const customerId = String(criteria.customerId || '').trim();
+		const fromDate = criteria.fromDate
+			? getSalesDateOnly(criteria.fromDate)
+			: null;
+		const toDate = criteria.toDate ? getSalesDateOnly(criteria.toDate) : null;
+
+		if (fromDate && toDate && fromDate > toDate) {
+			throw new Error('Date From cannot be after Date To.');
+		}
 
 		const results = data
 			.slice(1)
 			.filter((row) => {
-				if (!searchText) return true;
-
+				const date = getSalesDateOnly(row[1]);
 				return (
-					String(row[0]).toLowerCase().includes(searchText) ||
-					String(row[1]).toLowerCase().includes(searchText) ||
-					String(row[3]).toLowerCase().includes(searchText)
+					(!salesId || String(row[0]).toLowerCase().includes(salesId)) &&
+					(!customerId || String(row[2]) === customerId) &&
+					(!fromDate || date >= fromDate) &&
+					(!toDate || date <= toDate)
 				);
 			})
 			.map((row) => ({
 				id: row[0],
-				date: row[1],
+				date: formatSalesDateForInput(row[1]),
 				customerId: row[2],
 				customerName: row[3],
 				remarks: row[4],
@@ -251,9 +264,23 @@ function searchSales(searchText = '') {
 
 		return JSON.parse(JSON.stringify(results));
 	} catch (error) {
-		logError('searchSales', error, searchText);
+		logError('searchSales', error, criteria);
 		throw error;
 	}
+}
+
+function getSalesDateOnly(value) {
+	const date = new Date(value);
+	date.setHours(0, 0, 0, 0);
+	return date;
+}
+
+function formatSalesDateForInput(value) {
+	return Utilities.formatDate(
+		new Date(value),
+		Session.getScriptTimeZone(),
+		'yyyy-MM-dd',
+	);
 }
 
 /**

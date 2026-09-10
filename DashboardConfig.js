@@ -22,19 +22,37 @@ const DASHBOARD_LAYOUT = {
 		TITLE_COLUMN: 1,
 		TITLE_WIDTH: 10,
 	},
-
-	HIGHLIGHTS: {
+	CONFIGURATION: {
 		TITLE_ROW: 21,
+		TITLE_COLUMN: 1,
+		TITLE_WIDTH: 10,
+
+		TOTAL_MOULDS: {
+			ROW: 22,
+			COLUMN: 1,
+			WIDTH: 5,
+			HEIGHT: 3,
+		},
+
+		UNIQUE_MOULDS: {
+			ROW: 22,
+			COLUMN: 6,
+			WIDTH: 5,
+			HEIGHT: 3,
+		},
+	},
+	HIGHLIGHTS: {
+		TITLE_ROW: 26,
 
 		LEFT: {
-			ROW: 22,
+			ROW: 27,
 			COLUMN: 1,
 			WIDTH: 5,
 			HEIGHT: 4,
 		},
 
 		RIGHT: {
-			ROW: 22,
+			ROW: 27,
 			COLUMN: 6,
 			WIDTH: 5,
 			HEIGHT: 4,
@@ -42,7 +60,7 @@ const DASHBOARD_LAYOUT = {
 	},
 
 	SUMMARIES: {
-		START_ROW: 27,
+		START_ROW: 32,
 	},
 };
 
@@ -103,19 +121,6 @@ const DASHBOARD = {
 			title: 'Pieces / Round',
 			cell: 'E17',
 			decimals: 2,
-		},
-		{
-			key: 'uniqueProducts',
-			title: 'Unique Products',
-			cell: 'G13',
-			decimals: 0,
-		},
-
-		{
-			key: 'uniqueDies',
-			title: 'Unique Dies',
-			cell: 'I13',
-			decimals: 0,
 		},
 		{
 			key: 'avgPiecesPerDay',
