@@ -390,7 +390,12 @@ const REPORT_FOLDER_NAME = 'Reports';
 
 function exportCurrentReportPdf() {
 	const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-	const sheet = getReportSheet();
+	const activeSheet = spreadsheet.getActiveSheet();
+	const sheet =
+		activeSheet.getName() === SHEETS.REPORT ||
+		activeSheet.getName() === SHEETS.SALES_REPORT
+			? activeSheet
+			: getReportSheet();
 
 	const spreadsheetId = spreadsheet.getId();
 	const sheetId = sheet.getSheetId();

@@ -26,6 +26,8 @@ const SHEETS = {
 
 	MACHINE_REPORT: 'Machine_Report',
 	DASHBOARD: 'Dashboard',
+	SALES_DASHBOARD: 'Sales_Dashboard',
+	SALES_REPORT: 'Sales_Report',
 	VALIDATION: 'Validation',
 	REPORT: 'Report',
 	STOCK_LEDGER: 'StockLedger',
