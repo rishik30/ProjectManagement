@@ -1,0 +1,489 @@
+<!doctype html>
+
+<html>
+	<head>
+		<base target="_top" />
+
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 0;
+				padding: 0;
+				background: #f7f8fa;
+				color: #202124;
+			}
+
+			.header {
+				background: #ffffff;
+				padding: 16px 18px;
+				border-bottom: 1px solid #dadce0;
+			}
+
+			.header h2 {
+				margin: 0;
+				font-size: 20px;
+			}
+
+			.header p {
+				margin: 6px 0 0;
+				font-size: 12px;
+				color: #5f6368;
+			}
+
+			#content {
+				padding: 14px;
+			}
+
+			.section {
+				background: #ffffff;
+				border: 1px solid #dadce0;
+				border-radius: 8px;
+				padding: 14px;
+				margin-bottom: 14px;
+			}
+
+			.section-title {
+				font-size: 14px;
+				font-weight: bold;
+				margin-bottom: 12px;
+			}
+
+			.order-row {
+				display: grid;
+				grid-template-columns: 1fr 110px 32px;
+				gap: 8px;
+				margin-bottom: 8px;
+				align-items: center;
+			}
+
+			select,
+			input {
+				width: 100%;
+				box-sizing: border-box;
+				padding: 8px;
+				border: 1px solid #dadce0;
+				border-radius: 5px;
+				font-size: 13px;
+			}
+
+			.remove-btn {
+				border: none;
+				background: transparent;
+				cursor: pointer;
+				font-size: 18px;
+				color: #b3261e;
+			}
+
+			.secondary-btn,
+			.primary-btn {
+				border: none;
+				border-radius: 5px;
+				padding: 9px 14px;
+				cursor: pointer;
+				font-size: 13px;
+			}
+
+			.primary-btn {
+				background: #1a73e8;
+				color: white;
+			}
+
+			.secondary-btn {
+				background: #f1f3f4;
+				color: #202124;
+			}
+
+			.button-container {
+				display: flex;
+				gap: 8px;
+				margin-top: 12px;
+			}
+
+			.summary {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+			}
+
+			.summary-card {
+				background: #f8f9fa;
+				border: 1px solid #dadce0;
+				border-radius: 6px;
+				padding: 10px;
+			}
+
+			.summary-label {
+				font-size: 11px;
+				color: #5f6368;
+			}
+
+			.summary-value {
+				font-size: 18px;
+				font-weight: bold;
+				margin-top: 3px;
+			}
+
+			.result-table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 11px;
+			}
+
+			.result-table th,
+			.result-table td {
+				border-bottom: 1px solid #e0e0e0;
+				padding: 7px 4px;
+				text-align: right;
+			}
+
+			.result-table th:first-child,
+			.result-table td:first-child {
+				text-align: left;
+			}
+
+			.result-table th {
+				font-weight: bold;
+				background: #f8f9fa;
+			}
+
+			.status {
+				margin-top: 10px;
+				padding: 9px;
+				border-radius: 5px;
+				font-size: 12px;
+			}
+
+			.status.success {
+				background: #e6f4ea;
+				color: #137333;
+			}
+
+			.status.warning {
+				background: #fef7e0;
+				color: #8a6116;
+			}
+
+			.hidden {
+				display: none;
+			}
+
+			.loading {
+				opacity: 0.6;
+				pointer-events: none;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="header">
+			<h2>Order Completion Calculator</h2>
+			<p>
+				Estimate completion time using current stock, current moulds and the
+				last 7 days of production.
+			</p>
+		</div>
+
+		<div id="content">
+			<div class="section">
+				<div class="section-title">Order</div>
+
+				<div id="orderRows"></div>
+
+				<button type="button" class="secondary-btn" onclick="addOrderRow()">
+					+ Add Product
+				</button>
+
+				<div class="button-container">
+					<button
+						type="button"
+						id="calculateButton"
+						class="primary-btn"
+						onclick="calculateOrder()"
+					>
+						Calculate
+					</button>
+
+					<button
+						type="button"
+						class="secondary-btn"
+						onclick="resetCalculator()"
+					>
+						Reset
+					</button>
+				</div>
+			</div>
+
+			<div id="summarySection" class="section hidden">
+				<div class="section-title">Estimated Completion</div>
+
+				<div class="summary">
+					<div class="summary-card">
+						<div class="summary-label">Products</div>
+
+						<div id="productCount" class="summary-value">0</div>
+					</div>
+
+					<div class="summary-card">
+						<div class="summary-label">Completion Days</div>
+
+						<div id="completionDays" class="summary-value">-</div>
+					</div>
+				</div>
+
+				<div id="overallStatus" class="status"></div>
+			</div>
+
+			<div id="resultsSection" class="section hidden">
+				<div class="section-title">Product Breakdown</div>
+
+				<div style="overflow-x: auto">
+					<table class="result-table">
+						<thead>
+							<tr>
+								<th>Product</th>
+								<th>Order</th>
+								<th>Stock</th>
+								<th>Shortfall</th>
+								<th>Moulds</th>
+								<th>Expected/Day</th>
+								<th>Days</th>
+							</tr>
+						</thead>
+
+						<tbody id="resultsBody"></tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			let products = [];
+			let rowCounter = 0;
+
+			document.addEventListener('DOMContentLoaded', loadProducts);
+
+			function loadProducts() {
+				google.script.run
+					.withSuccessHandler((data) => {
+						products = data || [];
+
+						if (products.length === 0) {
+							showError('No products found.');
+							return;
+						}
+
+						addOrderRow();
+					})
+					.withFailureHandler(showError)
+					.getOrderCompletionProducts();
+			}
+
+			function addOrderRow() {
+				const container = document.getElementById('orderRows');
+
+				const rowId = ++rowCounter;
+
+				const row = document.createElement('div');
+
+				row.className = 'order-row';
+				row.id = `order-row-${rowId}`;
+
+				row.innerHTML = `
+					<select id="product-${rowId}">
+						<option value="">Select Product</option>
+						${products
+							.map(
+								(product) =>
+									`<option value="${escapeHtml(product.id)}">
+										${escapeHtml(product.name)}
+									</option>`,
+							)
+							.join('')}
+					</select>
+
+					<input
+						type="number"
+						id="qty-${rowId}"
+						min="1"
+						placeholder="Qty"
+					/>
+
+					<button
+						type="button"
+						class="remove-btn"
+						onclick="removeOrderRow(${rowId})"
+						title="Remove"
+					>
+						×
+					</button>
+				`;
+
+				container.appendChild(row);
+			}
+
+			function removeOrderRow(rowId) {
+				const row = document.getElementById(`order-row-${rowId}`);
+
+				if (row) {
+					row.remove();
+				}
+
+				if (document.querySelectorAll('#orderRows .order-row').length === 0) {
+					addOrderRow();
+				}
+			}
+
+			function calculateOrder() {
+				const rows = document.querySelectorAll('#orderRows .order-row');
+
+				const orderItems = [];
+
+				rows.forEach((row) => {
+					const rowId = row.id.replace('order-row-', '');
+
+					const productId = document.getElementById(`product-${rowId}`).value;
+
+					const orderQty = Number(
+						document.getElementById(`qty-${rowId}`).value,
+					);
+
+					if (productId || orderQty) {
+						orderItems.push({
+							productId,
+							orderQty,
+						});
+					}
+				});
+
+				if (orderItems.length === 0) {
+					showError('Please add at least one product.');
+
+					return;
+				}
+
+				setLoading(true);
+
+				google.script.run
+					.withSuccessHandler((result) => {
+						setLoading(false);
+						renderResults(result);
+					})
+					.withFailureHandler((error) => {
+						setLoading(false);
+						showError(error.message);
+					})
+					.calculateOrderCompletion(orderItems);
+			}
+
+			function renderResults(result) {
+				document.getElementById('summarySection').classList.remove('hidden');
+
+				document.getElementById('resultsSection').classList.remove('hidden');
+
+				document.getElementById('productCount').textContent =
+					result.results.length;
+
+				document.getElementById('completionDays').textContent =
+					result.canComplete ? result.overallDays : '—';
+
+				const status = document.getElementById('overallStatus');
+
+				if (result.canComplete) {
+					status.className = 'status success';
+
+					status.textContent = `Estimated completion: ${
+						result.overallDays
+					} day${result.overallDays === 1 ? '' : 's'}.`;
+				} else {
+					status.className = 'status warning';
+
+					status.textContent =
+						'One or more products cannot currently be estimated because there is no recent production rate or no configured moulds.';
+				}
+
+				const body = document.getElementById('resultsBody');
+
+				body.innerHTML = '';
+
+				result.results.forEach((item) => {
+					const row = document.createElement('tr');
+
+					row.innerHTML = `
+						<td>
+							${escapeHtml(item.productName)}
+						</td>
+
+						<td>
+							${formatNumber(item.orderQty)}
+						</td>
+
+						<td>
+							${formatNumber(item.currentStock)}
+						</td>
+
+						<td>
+							${formatNumber(item.shortfall)}
+						</td>
+
+						<td>
+							${formatNumber(item.currentMoulds)}
+						</td>
+
+						<td>
+							${
+								item.expectedProductionPerDay
+									? formatNumber(Math.round(item.expectedProductionPerDay))
+									: '—'
+							}
+						</td>
+
+						<td>
+							${item.shortfall === 0 ? '0' : item.daysRequired > 0 ? item.daysRequired : '—'}
+						</td>
+					`;
+
+					body.appendChild(row);
+				});
+			}
+
+			function resetCalculator() {
+				document.getElementById('orderRows').innerHTML = '';
+
+				document.getElementById('summarySection').classList.add('hidden');
+
+				document.getElementById('resultsSection').classList.add('hidden');
+
+				rowCounter = 0;
+
+				addOrderRow();
+			}
+
+			function setLoading(loading) {
+				document.getElementById('content').classList.toggle('loading', loading);
+
+				document.getElementById('calculateButton').textContent = loading
+					? 'Calculating...'
+					: 'Calculate';
+			}
+
+			function showError(message) {
+				alert(message || 'An error occurred.');
+			}
+
+			function formatNumber(value) {
+				return Number(value || 0).toLocaleString('en-IN', {
+					maximumFractionDigits: 0,
+				});
+			}
+
+			function escapeHtml(value) {
+				return String(value)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#039;');
+			}
+		</script>
+	</body>
+</html>

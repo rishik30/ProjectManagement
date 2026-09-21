@@ -15,6 +15,8 @@ function onOpen() {
 
 		.addItem('Sales', 'showSalesSidebar')
 
+		.addItem('Order Completion Calculator', 'showOrderCompletionSidebar')
+
 		.addSeparator()
 
 		.addItem('Customer Master', 'showCustomerSidebar')
@@ -109,6 +111,14 @@ function showStockAdjustmentsSidebar() {
 	const html = HtmlService.createTemplateFromFile('StockAdjustmentSidebar')
 		.evaluate()
 		.setTitle('Stock Adjustments');
+
+	SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function showOrderCompletionSidebar() {
+	const html = HtmlService.createTemplateFromFile('OrderCompletionSidebar')
+		.evaluate()
+		.setTitle('Order Completion');
 
 	SpreadsheetApp.getUi().showSidebar(html);
 }
