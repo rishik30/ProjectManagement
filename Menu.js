@@ -7,28 +7,25 @@
 function onOpen() {
 	const ui = SpreadsheetApp.getUi();
 
-	ui.createMenu('Production System')
-
+	const menu = ui
+		.createMenu('Production System')
 		.addItem('Daily Production', 'openProductionSidebar')
-
 		.addItem('Machine Setup', 'openMachineSetupSidebar')
-
 		.addItem('Sales', 'showSalesSidebar')
-
 		.addItem('Order Completion Calculator', 'showOrderCompletionSidebar')
-
 		.addSeparator()
-
 		.addItem('Customer Master', 'showCustomerSidebar')
-
 		.addItem('Stock Adjustments', 'showStockAdjustmentsSidebar')
-
 		.addSeparator()
-
 		.addItem('Dashboard', 'openDashboard')
+		.addItem('Sales Dashboard', 'openSalesDashboard');
 
-		.addItem('Sales Dashboard', 'openSalesDashboard')
+	// This menu item is deliberately omitted for unauthorised users.
+	if (isAmountAnalysisAuthorized()) {
+		menu.addItem('Amount Analysis', 'openAmountAnalysisSidebar');
+	}
 
+	menu
 		.addSubMenu(
 			ui
 				.createMenu('Reports')
@@ -42,17 +39,11 @@ function onOpen() {
 						.addItem('Sales Order Details', 'generateSalesOrderDetailReport'),
 				),
 		)
-
 		.addSeparator()
-
 		.addItem('Export Current Report (PDF)', 'exportCurrentReportPdf')
-
 		.addItem('Validate System', 'validateSystem')
-
 		.addSeparator()
-
 		.addItem('About', 'aboutSystem')
-
 		.addToUi();
 
 	// Initialize Inventory Engine
@@ -83,6 +74,19 @@ function generateReport() {
 
 function aboutSystem() {
 	SpreadsheetApp.getUi().alert(APP_NAME + '\n\nVersion : 1.0');
+}
+
+/**
+ * Opens the restricted Amount Analysis sidebar.
+ */
+function openAmountAnalysisSidebar() {
+	assertAmountAnalysisAuthorized();
+
+	const html = HtmlService.createTemplateFromFile('AmountAnalysisSidebar')
+		.evaluate()
+		.setTitle('Amount Analysis');
+
+	SpreadsheetApp.getUi().showSidebar(html);
 }
 
 /**
