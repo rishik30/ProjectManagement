@@ -1,0 +1,990 @@
+<!doctype html>
+<html>
+	<head>
+		<base target="_top" />
+		<?!= include('Styles'); ?>
+
+		<style>
+			body {
+				padding: 14px;
+				background: #f7f9fc;
+			}
+
+			.amount-page {
+				width: 100%;
+			}
+
+			.amount-header {
+				margin: -14px -14px 16px;
+				padding: 18px 16px;
+				background: #1f4e78;
+				color: #fff;
+			}
+
+			.amount-header h2 {
+				margin: 0 0 4px;
+				font-size: 18px;
+			}
+
+			.amount-header p {
+				margin: 0;
+				font-size: 12px;
+				opacity: 0.9;
+			}
+
+			.analysis-tabs {
+				display: flex;
+				gap: 8px;
+				margin-bottom: 16px;
+			}
+
+			.analysis-tab {
+				flex: 1;
+				border: 1px solid #d4dbe3;
+				border-radius: 6px;
+				background: #fff;
+				color: #333;
+				padding: 10px 8px;
+				cursor: pointer;
+				font-weight: bold;
+			}
+
+			.analysis-tab.active {
+				background: #1976d2;
+				border-color: #1976d2;
+				color: #fff;
+			}
+
+			.filter-card,
+			.result-card {
+				background: #fff;
+				border: 1px solid #e0e5eb;
+				border-radius: 8px;
+				padding: 14px;
+				margin-bottom: 14px;
+			}
+
+			.filter-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 12px;
+			}
+
+			.filter-grid .full {
+				grid-column: 1 / -1;
+			}
+
+			/* KPI cards */
+			.kpi-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 8px;
+				margin-bottom: 14px;
+			}
+
+			.result-kpi {
+				text-align: center;
+				background: #eef5ff;
+				border-radius: 8px;
+				padding: 12px 8px;
+			}
+
+			.result-kpi.adjusted {
+				background: #eaf7ee;
+			}
+
+			.result-kpi.waste {
+				background: #fff4d6;
+			}
+
+			.result-kpi .label {
+				display: block;
+				margin: 0 0 5px;
+				font-size: 11px;
+				color: #5f6b78;
+				font-weight: bold;
+			}
+
+			.result-kpi .amount {
+				display: block;
+				font-size: 18px;
+				font-weight: bold;
+				color: #1f4e78;
+			}
+
+			.result-kpi.adjusted .amount {
+				color: #1f6b36;
+			}
+
+			.result-kpi.waste .amount {
+				color: #765500;
+			}
+
+			.result-meta {
+				display: flex;
+				justify-content: space-between;
+				flex-wrap: wrap;
+				gap: 8px;
+				margin-bottom: 12px;
+				font-size: 12px;
+				color: #5f6b78;
+			}
+
+			.table-wrapper {
+				overflow-x: auto;
+				border: 1px solid #e0e0e0;
+				border-radius: 6px;
+			}
+
+			.amount-table {
+				min-width: 850px;
+				width: 100%;
+				border-collapse: collapse;
+			}
+
+			.amount-table th,
+			.amount-table td {
+				padding: 8px;
+				font-size: 12px;
+				border-bottom: 1px solid #e8e8e8;
+				white-space: nowrap;
+			}
+
+			.amount-table th {
+				position: sticky;
+				top: 0;
+				background: #1976d2;
+				color: #fff;
+				z-index: 1;
+			}
+
+			.amount-table td.num,
+			.amount-table th.num {
+				text-align: right;
+			}
+
+			.amount-table tr:last-child td {
+				border-bottom: none;
+			}
+
+			.total-row td {
+				font-weight: bold;
+				background: #f3f6f9;
+			}
+
+			.adjusted-cell {
+				font-weight: bold;
+			}
+
+			.waste-cell {
+				color: #765500;
+			}
+
+			.message {
+				padding: 10px 12px;
+				border-radius: 6px;
+				font-size: 12px;
+				line-height: 1.5;
+				margin-bottom: 12px;
+			}
+
+			.message.warning {
+				background: #fff4d6;
+				color: #765500;
+				border: 1px solid #f1d98b;
+			}
+
+			.message.error {
+				background: #fdeaea;
+				color: #9b1c1c;
+				border: 1px solid #efb0b0;
+			}
+
+			.message.success {
+				background: #eaf7ee;
+				color: #1f6b36;
+				border: 1px solid #b9dfc4;
+			}
+
+			@media (max-width: 500px) {
+				.kpi-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			@media (max-width: 360px) {
+				.filter-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.filter-grid .full {
+					grid-column: auto;
+				}
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="amount-page">
+			<div class="amount-header">
+				<h2>Amount Analysis</h2>
+				<p>Production and sales value based on the current product price.</p>
+			</div>
+
+			<div class="analysis-tabs">
+				<button id="productionTab" class="analysis-tab active">
+					Production Amount
+				</button>
+
+				<button id="salesTab" class="analysis-tab">Sales Amount</button>
+			</div>
+
+			<div class="filter-card">
+				<div class="filter-grid">
+					<div class="section full">
+						<label>Date Range</label>
+						<select id="dateRange"></select>
+					</div>
+
+					<div class="section">
+						<label>From Date</label>
+						<input type="date" id="fromDate" />
+					</div>
+
+					<div class="section">
+						<label>To Date</label>
+						<input type="date" id="toDate" />
+					</div>
+
+					<div class="section full">
+						<label>Product</label>
+						<select id="productSelect"></select>
+					</div>
+
+					<div id="machineField" class="section full">
+						<label>Machine</label>
+						<select id="machineSelect"></select>
+					</div>
+				</div>
+
+				<div id="filterMessage"></div>
+
+				<div class="button-container">
+					<button id="calculateBtn" class="primary-btn">
+						Calculate Amount
+					</button>
+
+					<button id="resetBtn" class="secondary-btn">Reset</button>
+				</div>
+			</div>
+
+			<div id="resultContainer"></div>
+		</div>
+
+		<script>
+			let formData = null;
+			let analysisType = 'production';
+
+			document.addEventListener('DOMContentLoaded', initialize);
+
+			function initialize() {
+				document
+					.getElementById('productionTab')
+					.addEventListener('click', () => setAnalysisType('production'));
+
+				document
+					.getElementById('salesTab')
+					.addEventListener('click', () => setAnalysisType('sales'));
+
+				document
+					.getElementById('dateRange')
+					.addEventListener('change', handleDateRangeChange);
+
+				document
+					.getElementById('calculateBtn')
+					.addEventListener('click', calculate);
+
+				document
+					.getElementById('resetBtn')
+					.addEventListener('click', resetFilters);
+
+				google.script.run
+					.withSuccessHandler(loadFormData)
+					.withFailureHandler(showError)
+					.getAmountAnalysisFormData();
+			}
+
+			function loadFormData(data) {
+				formData = data;
+
+				populateDateRanges();
+				populateProducts();
+				populateMachines();
+
+				setDefaultDateRange();
+				clearResults();
+			}
+
+			function populateDateRanges() {
+				const select = document.getElementById('dateRange');
+
+				select.innerHTML = '';
+
+				formData.dateRanges.forEach((value) => {
+					const option = document.createElement('option');
+
+					option.value = value;
+					option.textContent = value;
+
+					select.appendChild(option);
+				});
+			}
+
+			function populateProducts() {
+				const select = document.getElementById('productSelect');
+
+				select.innerHTML = '';
+
+				addOption(select, 'All', 'All Products');
+
+				formData.products.forEach((product) => {
+					addOption(select, product.id, product.name + ' (' + product.id + ')');
+				});
+			}
+
+			function populateMachines() {
+				const select = document.getElementById('machineSelect');
+
+				select.innerHTML = '';
+
+				addOption(select, 'All', 'All Machines');
+
+				formData.machines.forEach((machine) => {
+					addOption(select, machine.id, machine.name + ' (' + machine.id + ')');
+				});
+			}
+
+			function addOption(select, value, text) {
+				const option = document.createElement('option');
+
+				option.value = value;
+				option.textContent = text;
+
+				select.appendChild(option);
+			}
+
+			function setDefaultDateRange() {
+				document.getElementById('dateRange').value = 'This Month';
+
+				applyPresetDates();
+			}
+
+			function handleDateRangeChange() {
+				if (document.getElementById('dateRange').value !== 'Custom') {
+					applyPresetDates();
+				}
+			}
+
+			function applyPresetDates() {
+				const option = document.getElementById('dateRange').value;
+
+				if (option === 'Custom') {
+					return;
+				}
+
+				google.script.run
+					.withSuccessHandler((range) => {
+						document.getElementById('fromDate').value = range.fromDate;
+
+						document.getElementById('toDate').value = range.toDate;
+					})
+					.withFailureHandler(showError)
+					.getAmountAnalysisDateRange(option);
+			}
+
+			function setAnalysisType(type) {
+				analysisType = type;
+
+				const production = type === 'production';
+
+				document
+					.getElementById('productionTab')
+					.classList.toggle('active', production);
+
+				document
+					.getElementById('salesTab')
+					.classList.toggle('active', !production);
+
+				document.getElementById('machineField').style.display = production
+					? 'block'
+					: 'none';
+
+				clearResults();
+			}
+
+			function calculate() {
+				const btn = document.getElementById('calculateBtn');
+
+				const filters = {
+					type: analysisType,
+
+					dateRange: document.getElementById('dateRange').value,
+
+					fromDate: document.getElementById('fromDate').value,
+
+					toDate: document.getElementById('toDate').value,
+
+					productId: document.getElementById('productSelect').value,
+
+					machineId: document.getElementById('machineSelect').value,
+				};
+
+				if (!filters.fromDate || !filters.toDate) {
+					showFilterMessage(
+						'Please select both From Date and To Date.',
+						'error',
+					);
+
+					return;
+				}
+
+				btn.disabled = true;
+				btn.textContent = 'Calculating...';
+
+				showFilterMessage('');
+
+				google.script.run
+
+					.withSuccessHandler((result) => {
+						btn.disabled = false;
+						btn.textContent = 'Calculate Amount';
+
+						renderResult(result);
+					})
+
+					.withFailureHandler((error) => {
+						btn.disabled = false;
+						btn.textContent = 'Calculate Amount';
+
+						showError(error);
+					})
+
+					.calculateAmountAnalysis(filters);
+			}
+
+			function renderResult(result) {
+				if (!result) {
+					showError({
+						message: 'No result returned.',
+					});
+
+					return;
+				}
+
+				if (!result.success) {
+					renderMissingPrices(result);
+
+					return;
+				}
+
+				if (!result.rows.length) {
+					document.getElementById('resultContainer').innerHTML =
+						'<div class="result-card">' +
+						'<div class="message warning">' +
+						'No records found for the selected filters.' +
+						'</div>' +
+						'</div>';
+
+					return;
+				}
+
+				/*
+				 * PRODUCTION
+				 */
+
+				if (analysisType === 'production') {
+					const rows = result.rows
+						.map(
+							(row) => `
+
+        <tr>
+
+          <td>
+            ${escapeHtml(row.productName)}
+          </td>
+
+          <td>
+            ${escapeHtml(row.productId)}
+          </td>
+
+          <td class="num">
+            ${formatNumber(row.pieces)}
+          </td>
+
+          <td class="num waste-cell">
+            ${formatNumber(row.wastePieces)}
+          </td>
+
+          <td class="num">
+            ${formatNumber(row.netPieces)}
+          </td>
+
+          <td class="num">
+            ${formatCurrency(row.price)}
+          </td>
+
+          <td class="num">
+            ${formatCurrency(row.amount)}
+          </td>
+
+          <td class="num waste-cell">
+            ${formatCurrency(row.wasteAmount)}
+          </td>
+
+          <td class="num adjusted-cell">
+            ${formatCurrency(row.adjustedAmount)}
+          </td>
+
+        </tr>
+
+      `,
+						)
+						.join('');
+
+					document.getElementById('resultContainer').innerHTML = `
+
+        <div class="result-card">
+
+          <div class="kpi-grid">
+
+            <div class="result-kpi">
+
+              <span class="label">
+                Total Amount
+              </span>
+
+              <span class="amount">
+                ${formatCurrency(result.totals.amount)}
+              </span>
+
+            </div>
+
+
+            <div class="result-kpi waste">
+
+              <span class="label">
+                Waste Amount (1%)
+              </span>
+
+              <span class="amount">
+                ${formatCurrency(result.totals.wasteAmount)}
+              </span>
+
+            </div>
+
+
+            <div class="result-kpi adjusted">
+
+              <span class="label">
+                Adjusted Amount
+              </span>
+
+              <span class="amount">
+                ${formatCurrency(result.totals.adjustedAmount)}
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <div class="result-meta">
+
+            <span>
+              Gross Production:
+              <strong>
+                ${formatNumber(result.totals.pieces)}
+              </strong>
+            </span>
+
+            <span>
+              Waste:
+              <strong>
+                ${formatNumber(result.totals.wastePieces)}
+              </strong>
+            </span>
+
+            <span>
+              Net Production:
+              <strong>
+                ${formatNumber(result.totals.netPieces)}
+              </strong>
+            </span>
+
+            <span>
+              Products:
+              <strong>
+                ${result.rows.length}
+              </strong>
+            </span>
+
+          </div>
+
+
+          <div class="section-title">
+            Product Breakdown
+          </div>
+
+
+          <div class="table-wrapper">
+
+            <table class="amount-table">
+
+              <thead>
+
+                <tr>
+
+                  <th>
+                    Product
+                  </th>
+
+                  <th>
+                    Product ID
+                  </th>
+
+                  <th class="num">
+                    Gross Production
+                  </th>
+
+                  <th class="num">
+                    Waste 1%
+                  </th>
+
+                  <th class="num">
+                    Net Production
+                  </th>
+
+                  <th class="num">
+                    Rate
+                  </th>
+
+                  <th class="num">
+                    Total Amount
+                  </th>
+
+                  <th class="num">
+                    Waste Amount
+                  </th>
+
+                  <th class="num">
+                    Adjusted Amount
+                  </th>
+
+                </tr>
+
+              </thead>
+
+
+              <tbody>
+
+                ${rows}
+
+
+                <tr class="total-row">
+
+                  <td colspan="2">
+                    TOTAL
+                  </td>
+
+                  <td class="num">
+                    ${formatNumber(result.totals.pieces)}
+                  </td>
+
+                  <td class="num">
+                    ${formatNumber(result.totals.wastePieces)}
+                  </td>
+
+                  <td class="num">
+                    ${formatNumber(result.totals.netPieces)}
+                  </td>
+
+                  <td></td>
+
+                  <td class="num">
+                    ${formatCurrency(result.totals.amount)}
+                  </td>
+
+                  <td class="num waste-cell">
+                    ${formatCurrency(result.totals.wasteAmount)}
+                  </td>
+
+                  <td class="num adjusted-cell">
+                    ${formatCurrency(result.totals.adjustedAmount)}
+                  </td>
+
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+      `;
+
+					return;
+				}
+
+				/*
+				 * SALES
+				 */
+
+				const rows = result.rows
+					.map(
+						(row) => `
+
+      <tr>
+
+        <td>
+          ${escapeHtml(row.productName)}
+        </td>
+
+        <td>
+          ${escapeHtml(row.productId)}
+        </td>
+
+        <td class="num">
+          ${formatNumber(row.pieces)}
+        </td>
+
+        <td class="num">
+          ${formatCurrency(row.price)}
+        </td>
+
+        <td class="num">
+          ${formatCurrency(row.amount)}
+        </td>
+
+      </tr>
+
+    `,
+					)
+					.join('');
+
+				document.getElementById('resultContainer').innerHTML = `
+
+      <div class="result-card">
+
+        <div class="result-kpi">
+
+          <span class="label">
+            Sales Amount
+          </span>
+
+          <span class="amount">
+            ${formatCurrency(result.totals.amount)}
+          </span>
+
+        </div>
+
+
+        <div class="result-meta">
+
+          <span>
+            Total Pieces:
+            <strong>
+              ${formatNumber(result.totals.pieces)}
+            </strong>
+          </span>
+
+          <span>
+            Products:
+            <strong>
+              ${result.rows.length}
+            </strong>
+          </span>
+
+        </div>
+
+
+        <div class="section-title">
+          Product Breakdown
+        </div>
+
+
+        <div class="table-wrapper">
+
+          <table class="amount-table">
+
+            <thead>
+
+              <tr>
+
+                <th>
+                  Product
+                </th>
+
+                <th>
+                  Product ID
+                </th>
+
+                <th class="num">
+                  Pieces
+                </th>
+
+                <th class="num">
+                  Rate
+                </th>
+
+                <th class="num">
+                  Sales Amount
+                </th>
+
+              </tr>
+
+            </thead>
+
+
+            <tbody>
+
+              ${rows}
+
+
+              <tr class="total-row">
+
+                <td colspan="2">
+                  TOTAL
+                </td>
+
+                <td class="num">
+                  ${formatNumber(result.totals.pieces)}
+                </td>
+
+                <td></td>
+
+                <td class="num">
+                  ${formatCurrency(result.totals.amount)}
+                </td>
+
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+    `;
+			}
+
+			function renderMissingPrices(result) {
+				const missing = result.missingPrices
+					.map(
+						(item) =>
+							'<li>' +
+							escapeHtml(item.productName) +
+							' (' +
+							escapeHtml(item.productId) +
+							')' +
+							'</li>',
+					)
+					.join('');
+
+				document.getElementById('resultContainer').innerHTML = `
+
+      <div class="result-card">
+
+        <div class="message error">
+
+          Price is missing or invalid for the
+          following products.
+
+          Add the prices in the
+          <strong>Product_Pricing</strong>
+          sheet and calculate again.
+
+        </div>
+
+        <ul>
+          ${missing}
+        </ul>
+
+      </div>
+    `;
+			}
+
+			function resetFilters() {
+				document.getElementById('productSelect').value = 'All';
+
+				document.getElementById('machineSelect').value = 'All';
+
+				setDefaultDateRange();
+
+				setAnalysisType('production');
+
+				showFilterMessage('');
+
+				clearResults();
+			}
+
+			function clearResults() {
+				document.getElementById('resultContainer').innerHTML = '';
+			}
+
+			function showFilterMessage(message, type) {
+				const el = document.getElementById('filterMessage');
+
+				if (!message) {
+					el.innerHTML = '';
+
+					return;
+				}
+
+				el.innerHTML =
+					'<div class="message ' +
+					(type || 'warning') +
+					'">' +
+					escapeHtml(message) +
+					'</div>';
+			}
+
+			function showError(error) {
+				const message =
+					error && error.message
+						? error.message
+						: String(error || 'An unexpected error occurred.');
+
+				showFilterMessage(message, 'error');
+			}
+
+			function formatNumber(value) {
+				return Number(value || 0).toLocaleString('en-IN', {
+					maximumFractionDigits: 2,
+				});
+			}
+
+			function formatCurrency(value) {
+				return Number(value || 0).toLocaleString('en-IN', {
+					style: 'currency',
+					currency: 'INR',
+					maximumFractionDigits: 2,
+				});
+			}
+
+			function escapeHtml(value) {
+				return String(value == null ? '' : value)
+					.replace(/&/g, '&amp;')
+
+					.replace(/</g, '&lt;')
+
+					.replace(/>/g, '&gt;')
+
+					.replace(/"/g, '&quot;')
+
+					.replace(/'/g, '&#039;');
+			}
+		</script>
+	</body>
+</html>

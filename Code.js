@@ -28,6 +28,7 @@ const SHEETS = {
 	DASHBOARD: 'Dashboard',
 	SALES_DASHBOARD: 'Sales_Dashboard',
 	SALES_REPORT: 'Sales_Report',
+	PRODUCT_PRICING: 'Product_Pricing',
 	VALIDATION: 'Validation',
 	REPORT: 'Report',
 	STOCK_LEDGER: 'StockLedger',
