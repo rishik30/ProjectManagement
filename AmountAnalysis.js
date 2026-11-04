@@ -12,6 +12,84 @@ const AMOUNT_ANALYSIS_ALLOWED_EMAILS = [
 	'devanshu189@gmail.com',
 ];
 
+const PRODUCT_PRICING_JSON = [
+	{ productId: 'P001', productName: 'UMBRELLA DUCK', ratePerPc: 13.9 },
+	{ productId: 'P002', productName: 'NAUGHTY MONKEY', ratePerPc: 11.6 },
+	{ productId: 'P003', productName: 'DANA DUCK', ratePerPc: 13.9 },
+	{ productId: 'P004', productName: 'PET PUPPY', ratePerPc: 12.8 },
+	{ productId: 'P005', productName: 'NUMERICAL BALL', ratePerPc: 16.08 },
+	{ productId: 'P006', productName: '4 YAAR', ratePerPc: 11.2 },
+	{ productId: 'P007', productName: 'KING ELEPHANT', ratePerPc: 14.97 },
+	{ productId: 'P008', productName: '12 PC CHU CHU', ratePerPc: 7.6 },
+	{ productId: 'P009', productName: 'FAIRY SET', ratePerPc: 13.9 },
+	{ productId: 'P010', productName: 'LOVELY CAT', ratePerPc: 16.05 },
+	{ productId: 'P011', productName: 'BALLOON ANIMAL', ratePerPc: 14.97 },
+	{ productId: 'P012', productName: 'CALLY SHEEP', ratePerPc: 14.2 },
+	{ productId: 'P013', productName: 'VEGETABLES BIG', ratePerPc: 12.6 },
+	{ productId: 'P014', productName: 'BOTTLE', ratePerPc: 25.6 },
+	{ productId: 'P015', productName: 'BABY BIG', ratePerPc: 25.6 },
+	{ productId: 'P016', productName: 'LOVE COUPLE', ratePerPc: 14.97 },
+	{ productId: 'P017', productName: 'DASHING TEDDY', ratePerPc: 19.25 },
+	{ productId: 'P018', productName: 'JOLLY RABBIT', ratePerPc: 14.97 },
+	{ productId: 'P019', productName: 'PARI DUCK', ratePerPc: 12.6 },
+	{ productId: 'P020', productName: 'DUCK BABY', ratePerPc: 14.97 },
+	{ productId: 'P021', productName: 'PARTY TIME', ratePerPc: 14.97 },
+	{ productId: 'P022', productName: 'FRENCH FRIES', ratePerPc: 14.97 },
+	{ productId: 'P023', productName: 'HAPPY TEDDY', ratePerPc: 11.6 },
+	{ productId: 'P024', productName: 'LOVE N LILY', ratePerPc: 19.25 },
+	{ productId: 'P025', productName: 'CUTE BEAR$DOG', ratePerPc: 13.9 },
+	{ productId: 'P026', productName: 'DUCK FRIEND', ratePerPc: 14.97 },
+	{ productId: 'P027', productName: 'VALLEY FRIENDS', ratePerPc: 16.05 },
+	{ productId: 'P028', productName: 'FARM FRIENDS', ratePerPc: 13.9 },
+	{ productId: 'P029', productName: 'RAINBOW FISH', ratePerPc: 11.6 },
+	{ productId: 'P030', productName: 'FUNNY CLOWN', ratePerPc: 19.25 },
+	{ productId: 'P031', productName: 'FLOWER BABY', ratePerPc: 22.2 },
+	{ productId: 'P032', productName: 'CRAZY BIRD', ratePerPc: 14.97 },
+	{ productId: 'P033', productName: 'COOKIE DUCK', ratePerPc: 13.55 },
+	{ productId: 'P034', productName: 'WILD ANIMAL', ratePerPc: 11.6 },
+	{ productId: 'P035', productName: 'YELLOW DUCK', ratePerPc: 10.5 },
+	{ productId: 'P036', productName: 'MEDIUM FRUIT', ratePerPc: 10.5 },
+	{ productId: 'P037', productName: 'TRANSPORT 1109', ratePerPc: 14.5 },
+	{ productId: 'P038', productName: 'M B SWIMIMG DUCK', ratePerPc: 11.5 },
+	{ productId: 'P039', productName: 'SMALL FRUIT', ratePerPc: 10.5 },
+	{ productId: 'P040', productName: 'BIG FRUIT', ratePerPc: 12.0 },
+	{ productId: 'P041', productName: 'DALMATION DOG', ratePerPc: 14.97 },
+	{ productId: 'P042', productName: 'VOLLEY FRIENDS', ratePerPc: 16.05 },
+	{ productId: 'P043', productName: 'PUP BUDDIES', ratePerPc: 16.05 },
+	{ productId: 'P044', productName: 'MINI ZOO', ratePerPc: 12.83 },
+	{ productId: 'P045', productName: 'HENNY EGG', ratePerPc: 13.55 },
+	{ productId: 'P046', productName: 'BABY BASKET', ratePerPc: 18.83 },
+	{ productId: 'P047', productName: 'FUNNY ANIMAL', ratePerPc: 13.9 },
+	{ productId: 'P048', productName: 'PARTY TIME BOY', ratePerPc: 14.97 },
+	{ productId: 'P049', productName: 'ANIMAL TOKREY', ratePerPc: 16.05 },
+	{ productId: 'P050', productName: 'DOG SET', ratePerPc: 13.9 },
+	{ productId: 'P051', productName: 'POCKET PETS', ratePerPc: 12.0 },
+	{ productId: 'P052', productName: 'PENGUIN 6 PC', ratePerPc: 11.23 },
+	{ productId: 'P053', productName: 'M BANSAL KHILONA', ratePerPc: 14.0 },
+	{ productId: null, productName: 'LEOPLAST 1104', ratePerPc: 14.5 },
+	{ productId: null, productName: 'LEOPLAST 1105', ratePerPc: 14.5 },
+	{ productId: null, productName: 'LEOPLAST 1106', ratePerPc: 14.5 },
+	{ productId: null, productName: 'LEOPLAST 1107', ratePerPc: 0.0 },
+	{ productId: null, productName: 'LEOPLAST 1108', ratePerPc: 11.5 },
+	{ productId: null, productName: 'LEOPLAST 1109', ratePerPc: 14.5 },
+	{ productId: null, productName: 'LEOPLAST 1111', ratePerPc: 12.16 },
+	{ productId: null, productName: 'LEOPLAST 1112', ratePerPc: 14.5 },
+	{ productId: null, productName: 'LEOPLAST 1113', ratePerPc: 15.5 },
+	{ productId: null, productName: 'LEOPLAST 1117', ratePerPc: 15.0 },
+	{ productId: null, productName: 'LEOPLAST 1118', ratePerPc: 15.0 },
+	{ productId: null, productName: 'LEOPLAST 1119', ratePerPc: 15.0 },
+	{ productId: null, productName: 'LEOPLAST 1120', ratePerPc: 15.0 },
+	{ productId: null, productName: 'LEOPLAST 1121', ratePerPc: 0.0 },
+	{ productId: null, productName: 'LEOPLAST 1122', ratePerPc: 13.5 },
+	{ productId: null, productName: 'LEOPLAST 1123', ratePerPc: 0.0 },
+	{ productId: null, productName: 'LEOPLAST 1124', ratePerPc: 15.5 },
+	{ productId: null, productName: 'LEOPLAST 1125', ratePerPc: 15.0 },
+	{ productId: null, productName: 'LEOPLAST 1126', ratePerPc: 15.33 },
+	{ productId: null, productName: 'LEOPLAST 1127', ratePerPc: 15.33 },
+	{ productId: null, productName: 'LEOPLAST 1128', ratePerPc: 15.33 },
+	{ productId: null, productName: 'LEOPLAST 1129', ratePerPc: 15.33 },
+];
+
 function isAmountAnalysisAuthorized() {
 	const email = String(Session.getActiveUser().getEmail() || '')
 		.trim()
@@ -297,20 +375,16 @@ function getSalesAmountDataset_(filters) {
 }
 
 function getProductPriceMap_() {
-	const sheet = getSheet(SHEETS.PRODUCT_PRICING);
-
-	if (!sheet || sheet.getLastRow() <= 1) {
-		return {};
-	}
-
-	const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
 	const map = {};
 
-	values.forEach((row) => {
-		const productId = String(row[0] || '').trim();
+	PRODUCT_PRICING_JSON.forEach((row) => {
+		const productId = row.productId ? String(row.productId).trim() : null;
 
 		if (productId) {
-			map[productId] = row[1];
+			map[productId] =
+				row.ratePerPc !== undefined && row.ratePerPc !== null
+					? Number(row.ratePerPc)
+					: null;
 		}
 	});
 
