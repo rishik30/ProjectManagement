@@ -81,10 +81,6 @@ function buildDashboardTitle(sheet) {
 function buildFilterSection(sheet) {
 	const filters = getDashboardFilters();
 
-	/*
-	 * Labels
-	 */
-
 	const labels = [
 		['Date Range'],
 		['From Date'],
@@ -99,36 +95,22 @@ function buildFilterSection(sheet) {
 		.setValues(labels)
 		.setFontWeight('bold');
 
-	/*
-	 * Default Values
-	 */
-
 	const today = new Date();
-
 	const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 
 	sheet.getRange('B3').setValue(DASHBOARD.DATE_RANGES[2]);
-
 	sheet.getRange('B4').setValue(firstDay);
-
 	sheet.getRange('B5').setValue(today);
-
 	sheet.getRange('B4:B5').setNumberFormat('dd/MM/yyyy');
 
-	sheet.getRange('B6').setValue('All');
+	sheet.getRange('B6:B8').setValue('All');
 
-	sheet.getRange('B7').setValue('All');
+	sheet.getRange('A9').setValue('Chart Period').setFontWeight('bold');
+	sheet.getRange('B9').setValue('3 Months');
 
-	sheet.getRange('B8').setValue('All');
-
-	/*
-	 * Hidden Lists
-	 */
-
-	const startColumn = 20; // T
+	const startColumn = 20;
 
 	sheet.getRange(1, startColumn).setValue('DateRanges');
-
 	sheet
 		.getRange(2, startColumn, 7, 1)
 		.setValues([
@@ -142,22 +124,18 @@ function buildFilterSection(sheet) {
 		]);
 
 	sheet.getRange(1, startColumn + 1).setValue('Machines');
-
 	const machines = [['All']].concat(filters.machines.map((m) => [m.name]));
-
 	sheet.getRange(2, startColumn + 1, machines.length, 1).setValues(machines);
 
 	sheet.getRange(1, startColumn + 2).setValue('Operators');
-
 	const operators = [['All']].concat(filters.operators.map((o) => [o.name]));
-
 	sheet.getRange(2, startColumn + 2, operators.length, 1).setValues(operators);
 
 	sheet.getRange(1, startColumn + 3).setValue('Products');
-
 	const products = [['All']].concat(filters.products.map((p) => [p.name]));
-
 	sheet.getRange(2, startColumn + 3, products.length, 1).setValues(products);
+
+	updateMonthlyChartPeriodValidation_(sheet, 'B9');
 }
 
 function buildDashboardPlaceholder(sheet) {
@@ -436,10 +414,14 @@ function testDashboardData() {
 
 function ensureDashboardLayout(sheet) {
 	const title = sheet.getRange('A1').getValue();
-
 	const hasFilters = sheet.getRange('A3').getValue() === 'Date Range';
+	const hasChartPeriod = sheet.getRange('A9').getValue() === 'Chart Period';
 
-	if (title === 'FACTORY PRODUCTION DASHBOARD' && hasFilters) {
+	if (
+		title === 'FACTORY PRODUCTION DASHBOARD' &&
+		hasFilters &&
+		hasChartPeriod
+	) {
 		return false;
 	}
 
@@ -468,7 +450,7 @@ function handleDashboardEdit(e) {
 
 	const a1 = e.range.getA1Notation();
 
-	const dashboardFilterCells = ['B3', 'B4', 'B5', 'B6', 'B7', 'B8'];
+	const dashboardFilterCells = ['B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'];
 
 	if (!dashboardFilterCells.includes(a1)) {
 		return;
@@ -525,6 +507,7 @@ function refreshDashboardData(sheet, filters) {
 		updateKpiSection(sheet, kpi);
 		updateConfigurationSection(sheet, configuration);
 		updateProductionHighlights(sheet, kpi);
+		updateProductionMonthlyChart(sheet);
 
 		updateSummaryTable(
 			sheet,
@@ -758,6 +741,21 @@ function updateProductionHighlights(sheet, kpi) {
 		'Lowest Production',
 		kpi.lowestProductionPieces,
 		kpi.lowestProductionDate,
+	);
+}
+
+function updateProductionMonthlyChart(sheet) {
+	const period = sheet.getRange('B9').getValue() || '3 Months';
+	const range = getMonthlyChartRange_(period);
+	const totals = aggregateMonthlyProductionPieces_(range);
+
+	writeMonthlyColumnChart_(
+		sheet,
+		'Monthly Production Pieces',
+		period,
+		totals,
+		31,
+		'Production Pieces',
 	);
 }
 

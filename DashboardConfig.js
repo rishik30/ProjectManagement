@@ -60,7 +60,7 @@ const DASHBOARD_LAYOUT = {
 	},
 
 	SUMMARIES: {
-		START_ROW: 32,
+		START_ROW: 52,
 	},
 };
 

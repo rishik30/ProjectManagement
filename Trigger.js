@@ -11,4 +11,5 @@ function onEdit(e) {
 
 	handleDashboardEdit(e);
 	handleSalesDashboardEdit(e);
+	handleAmountDashboardEdit(e);
 }
