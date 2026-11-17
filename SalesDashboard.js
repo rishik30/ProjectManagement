@@ -6,7 +6,7 @@
  * so every metric is based on sale orders and product pieces—not revenue.
  */
 
-const SALES_DASHBOARD_FILTER_CELLS = ['B3', 'B4', 'B5', 'B6', 'B7'];
+const SALES_DASHBOARD_FILTER_CELLS = ['B3', 'B4', 'B5', 'B6', 'B7', 'B8'];
 const SALES_DASHBOARD_DATE_RANGES = [
 	'Today',
 	'This Week',
@@ -33,18 +33,25 @@ function refreshSalesDashboard() {
 }
 
 function ensureSalesDashboardLayout(sheet) {
-	if (
-		sheet.getRange('A1').getValue() === 'SALES DASHBOARD' &&
-		sheet.getRange('A3').getValue() === 'Date Range'
-	) {
+	const hasTitle = sheet.getRange('A1').getValue() === 'SALES DASHBOARD';
+
+	const hasFilters = sheet.getRange('A3').getValue() === 'Date Range';
+
+	const hasChartPeriod = sheet.getRange('A8').getValue() === 'Chart Period';
+
+	if (hasTitle && hasFilters && hasChartPeriod) {
 		return false;
 	}
+
+	sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
 
 	sheet.clear();
 	sheet.clearConditionalFormatRules();
 	sheet.setHiddenGridlines(true);
 	sheet.setFrozenRows(2);
+
 	buildSalesDashboardLayout(sheet);
+
 	return true;
 }
 
@@ -89,6 +96,11 @@ function buildSalesDashboardLayout(sheet) {
 	buildSalesKpiCard(sheet, 'C14', 'Top Customer');
 	buildSalesKpiCard(sheet, 'E14', 'Top Product');
 	buildSalesKpiCard(sheet, 'G14', 'Latest Sale');
+
+	// Chart Period
+	sheet.getRange('A8').setValue('Chart Period').setFontWeight('bold');
+	sheet.getRange('B8').setValue('3 Months');
+	updateMonthlyChartPeriodValidation_(sheet, 'B8');
 
 	setSalesKpiRowHeights(sheet);
 	setSalesDashboardColumnWidths(sheet);
@@ -299,6 +311,7 @@ function refreshSalesDashboardData(sheet) {
 		const kpis = calculateSalesDashboardKpis(dataset);
 		updateSalesDashboardKpis(sheet, kpis);
 		writeSalesDashboardTables(sheet, dataset);
+		updateSalesMonthlyChart(sheet);
 		setSalesDashboardStatus(
 			sheet,
 			'🟢 Ready | Last Updated: ' +
@@ -363,48 +376,54 @@ function updateSalesDashboardKpis(sheet, kpis) {
 
 function writeSalesDashboardTables(sheet, dataset) {
 	clearSalesDashboardTables(sheet);
+
 	const productSummary = summarizeSales(dataset, 'productName');
 	const customerSummary = summarizeSales(dataset, 'customerName');
 	const dailySummary = summarizeSales(dataset, 'date', true);
+
 	writeSalesDashboardSummary(
 		sheet,
-		19,
+		38,
 		1,
 		'Product Performance',
 		['Product', 'Pieces'],
 		productSummary,
 	);
+
 	writeSalesDashboardSummary(
 		sheet,
-		19,
+		38,
 		4,
 		'Customer Performance',
 		['Customer', 'Pieces'],
 		customerSummary,
 	);
+
 	writeSalesDashboardSummary(
 		sheet,
-		19,
+		38,
 		7,
 		'Daily Sales',
 		['Date', 'Pieces'],
 		dailySummary,
 	);
+
 	const recentSalesRow = Math.max(
-		42,
-		23 +
+		61,
+		42 +
 			Math.max(
 				productSummary.length,
 				customerSummary.length,
 				dailySummary.length,
 			),
 	);
+
 	writeRecentSalesTable(sheet, dataset, recentSalesRow);
 }
 
 function clearSalesDashboardTables(sheet) {
 	// Remove prior title/empty-state merges before rewriting the tables.
-	sheet.getRange('A19:J1000').breakApart().clearContent().clearFormat();
+	sheet.getRange('A38:J1000').breakApart().clearContent().clearFormat();
 }
 
 function summarizeSales(dataset, field, dateField) {
@@ -557,18 +576,35 @@ function formatSalesNumber(value) {
 
 function handleSalesDashboardEdit(e) {
 	const sheet = e.range.getSheet();
+	const editedCell = e.range.getA1Notation();
+
 	if (
 		sheet.getName() !== SHEETS.SALES_DASHBOARD ||
-		!SALES_DASHBOARD_FILTER_CELLS.includes(e.range.getA1Notation())
-	)
-		return;
-	if (
-		e.range.getA1Notation() === 'B3' &&
-		sheet.getRange('B3').getValue() !== 'Custom'
+		(!SALES_DASHBOARD_FILTER_CELLS.includes(editedCell) && editedCell !== 'B8')
 	) {
+		return;
+	}
+
+	if (editedCell === 'B3' && sheet.getRange('B3').getValue() !== 'Custom') {
 		const range = resolveDateRange(sheet.getRange('B3').getValue());
 		sheet.getRange('B4').setValue(range.fromDate);
 		sheet.getRange('B5').setValue(range.toDate);
 	}
+
 	refreshSalesDashboardData(sheet);
+}
+
+function updateSalesMonthlyChart(sheet) {
+	const period = sheet.getRange('B8').getValue() || '3 Months';
+	const range = getMonthlyChartRange_(period);
+	const totals = aggregateMonthlySalesPieces_(range);
+
+	writeMonthlyColumnChart_(
+		sheet,
+		'Monthly Sales Pieces',
+		period,
+		totals,
+		19,
+		'Sales Pieces',
+	);
 }

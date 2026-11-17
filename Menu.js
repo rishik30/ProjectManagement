@@ -21,7 +21,9 @@ function onOpen() {
 
 	// This menu item is deliberately omitted for unauthorised users.
 	if (isAmountAnalysisAuthorized()) {
-		menu.addItem('Amount Analysis', 'openAmountAnalysisSidebar');
+		menu
+			.addItem('Amount Analysis', 'openAmountAnalysisSidebar')
+			.addItem('Amount Dashboard', 'openAmountDashboard');
 	}
 
 	menu
